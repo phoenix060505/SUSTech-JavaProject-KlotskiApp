@@ -2,6 +2,8 @@
 package ui;
 import game.Direction;
 import game.GameLogic;
+import javafx.application.Platform; // 导入 Platform
+import javafx.concurrent.Task; // 导入 Task
 import javafx.scene.input.KeyEvent;
 import model.Block;
 import model.Board;
@@ -43,6 +45,8 @@ public class KlotskiApp extends Application {
     private int currentLevel = 1;
 
     private LevelManager levelManager; // Add LevelManager field
+    private Button hintButton; // 添加提示按钮字段
+    private ProgressIndicator solverProgress; // 添加求解器进度指示器
 
     // UI components
     private GridPane boardGrid;
@@ -257,7 +261,12 @@ public class KlotskiApp extends Application {
         ComboBox<String> levelComboBox = new ComboBox<>();
         // Assuming LevelManager has a method to get level names, e.g., getLevelNames()
         // For now, let's add some placeholder level names based on your LevelManager snippet
-        levelComboBox.getItems().addAll("Classic", "Advanced", "Expert"); // Add your actual level names
+        // Get level names from LevelManager
+        List<String> levelNames = new ArrayList<>();
+        for (int i = 1; i <= levelManager.getLevelCount(); i++) {
+            levelNames.add(levelManager.getLevel(i).getName());
+        }
+        levelComboBox.getItems().addAll(levelNames); // Add your actual level names
         levelComboBox.getSelectionModel().selectFirst(); // Select the first level by default
         // --- End Level Selection UI ---
 
@@ -265,11 +274,7 @@ public class KlotskiApp extends Application {
         newGameButton.setOnAction(e -> {
             // Get selected level name and find the corresponding level number
             String selectedLevelName = levelComboBox.getSelectionModel().getSelectedItem();
-            int levelNumber = -1; // Determine level number based on name or index
-            // A better approach is to store levels with their numbers or directly use Level objects in ComboBox
-
-            // For this example, let's use the selected index + 1 as the level number
-            levelNumber = levelComboBox.getSelectionModel().getSelectedIndex() + 1;
+            int levelNumber = levelComboBox.getSelectionModel().getSelectedIndex() + 1; // Use index + 1 as level number
 
 
             showGameScene(); // <-- 先调用 showGameScene 初始化 UI
@@ -339,6 +344,9 @@ public class KlotskiApp extends Application {
         Button undoButton  = new Button("Undo");
         Button saveButton  = new Button("Save");
         Button menuButton  = new Button("Menu");
+        hintButton = new Button("Hint"); // 初始化提示按钮
+        solverProgress = new ProgressIndicator(-1); // 初始化进度指示器
+        solverProgress.setVisible(false); // 默认隐藏
 
         // 禁用游客存档
         saveButton.setDisable(userManager.isGuest());
@@ -354,15 +362,16 @@ public class KlotskiApp extends Application {
             stopTimer();
             showMainMenu();
         });
+        hintButton.setOnAction(e -> getAndApplyHint()); // 添加提示按钮事件处理
 
         controlPanel.getChildren().addAll(
                 upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, menuButton);
+                undoButton, saveButton, hintButton, menuButton, solverProgress); // 添加提示按钮和进度指示器
         root.setBottom(controlPanel);
 
         /* ---------- 防止按钮抢键盘 ---------- */
         for (Button b : List.of(upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, menuButton)) {
+                undoButton, saveButton, hintButton, menuButton)) { // 将提示按钮添加到列表中
             b.setFocusTraversable(false);
         }
 
@@ -371,6 +380,8 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         // 事件过滤器：始终能收到键盘（不受焦点限制）
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (gameLogic.isGameWon()) return; // 游戏胜利后禁用键盘控制
+
             switch (e.getCode()) {
                 case UP    -> moveSelected(Direction.UP);
                 case DOWN  -> moveSelected(Direction.DOWN);
@@ -378,6 +389,7 @@ public class KlotskiApp extends Application {
                 case RIGHT -> moveSelected(Direction.RIGHT);
                 case Z     -> { if (e.isControlDown()) undo(); }
                 case S     -> { if (e.isControlDown()) saveGame(); }
+                case H     -> { if (e.isControlDown()) getAndApplyHint(); } // Ctrl+H 触发提示
             }
         });
 
@@ -465,6 +477,8 @@ public class KlotskiApp extends Application {
 
             // Make blocks interactive
             rect.setOnMouseClicked(e -> {
+                // 游戏胜利后禁用块选择
+                if (gameLogic.isGameWon()) return;
                 selectedBlock = block;
                 updateSelectedBlockHighlight();
             });
@@ -493,31 +507,45 @@ public class KlotskiApp extends Application {
             return;
         }
 
+        // Remove highlight from previously selected block
         for (int i = 0; i < boardGrid.getChildren().size(); i++) {
             if (boardGrid.getChildren().get(i) instanceof Rectangle) {
                 Rectangle rect = (Rectangle) boardGrid.getChildren().get(i);
-
-                // Skip the empty cells
-                if (rect.getWidth() < 70) { // Assuming cells are exactly 70 wide
-                    continue;
+                // Check if this rectangle represents a block (not an empty cell)
+                // Assuming cells are exactly 70x70, blocks are larger or different dimensions
+                if (rect.getWidth() > 0 && rect.getHeight() > 0 && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
+                    // Reset stroke
+                    rect.setStroke(Color.BLACK);
+                    rect.setStrokeWidth(2);
                 }
+            }
+        }
 
-                // Get the block associated with this rectangle
-                // Need to find the block at the rectangle's grid position
-                Integer col = GridPane.getColumnIndex(rect);
-                Integer row = GridPane.getRowIndex(rect);
 
-                if (col != null && row != null) {
-                    Block blockAtPos = gameLogic.getBoard().getBlockAt(col, row);
+        // Add highlight to the currently selected block
+        if (selectedBlock != null) {
+            for (int i = 0; i < boardGrid.getChildren().size(); i++) {
+                if (boardGrid.getChildren().get(i) instanceof Rectangle) {
+                    Rectangle rect = (Rectangle) boardGrid.getChildren().get(i);
 
-                    if (blockAtPos == selectedBlock) {
-                        rect.setStroke(Color.WHITE);
-                        rect.setStrokeWidth(3);
-                    } else {
-                        // Reset stroke for non-selected blocks that are actual blocks
-                        if (blockAtPos != null && blockAtPos.getWidth() > 0 && blockAtPos.getHeight() > 0) {
-                            rect.setStroke(Color.BLACK);
-                            rect.setStrokeWidth(2);
+                    Integer col = GridPane.getColumnIndex(rect);
+                    Integer row = GridPane.getRowIndex(rect);
+
+                    if (col != null && row != null) {
+                        // Find the block at this rectangle's position and dimensions
+                        // Need to iterate through blocks to find the one matching this rectangle
+                        // This might be inefficient, consider storing block reference in Rectangle's user data
+                        for (Block block : gameLogic.getBoard().getBlocks()) {
+                            if (block.getX() == col && block.getY() == row &&
+                                    block.getWidth() == GridPane.getColumnSpan(rect) &&
+                                    block.getHeight() == GridPane.getRowSpan(rect)) {
+
+                                if (block == selectedBlock) {
+                                    rect.setStroke(Color.WHITE);
+                                    rect.setStrokeWidth(3);
+                                    return; // Found the selected block, exit
+                                }
+                            }
                         }
                     }
                 }
@@ -527,6 +555,10 @@ public class KlotskiApp extends Application {
 
     // Move the selected block
     private void moveSelected(Direction direction) {
+        // 游戏胜利后禁用移动
+        if (gameLogic != null && gameLogic.isGameWon()) return;
+
+
         if (selectedBlock != null && gameLogic != null) { // Add null check for gameLogic
             if (gameLogic.moveBlock(selectedBlock, direction)) {
                 updateBoard();
@@ -534,21 +566,27 @@ public class KlotskiApp extends Application {
                 if (gameLogic.isGameWon()) {
                     showVictoryScene();
                 }
-                GameState gameState = new GameState(
-                        gameLogic.getBoard(),
-                        userManager.getCurrentUser().getUsername(),
-                        currentLevel,
-                        gameLogic.getMoveHistory(),
-                        gameLogic.isGameWon()
-                );
-                gameState.setTimeElapsed(System.currentTimeMillis() - startTime);  // 更新时间
+                // Auto-save only if user is logged in
+                if (!userManager.isGuest()) {
+                    GameState gameState = new GameState(
+                            gameLogic.getBoard(),
+                            userManager.getCurrentUser().getUsername(),
+                            currentLevel,
+                            new ArrayDeque<>(gameLogic.getMoveHistory()), // Copy history
+                            gameLogic.isGameWon()
+                    );
+                    gameState.setTimeElapsed(System.currentTimeMillis() - startTime);  // 更新时间
 
-                gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);  // 手动保存
+                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);  // 手动保存
+                }
+
                 // Update move count display after a successful move
                 moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
             }
         } else if (gameLogic != null && gameLogic.getBoard() != null) { // Add null checks
             // If no block is selected, try to find one at the center
+            // This part might be less intuitive, consider removing or improving block selection
+            /*
             Block centerBlock = gameLogic.getBoard().getBlockAt(
                     gameLogic.getBoard().getCols() / 2,
                     gameLogic.getBoard().getRows() / 2
@@ -558,15 +596,34 @@ public class KlotskiApp extends Application {
                 selectedBlock = centerBlock;
                 updateSelectedBlockHighlight();
             }
+            */
         }
     }
 
     // Undo last move
     private void undo() {
+        // 游戏胜利后禁用撤销
+        if (gameLogic != null && gameLogic.isGameWon()) return;
+
         if (gameLogic != null && gameLogic.undoMove()) { // Add null check for gameLogic
             updateBoard();
             // Update move count display after undo
             moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+
+            // Auto-save after undo if user is logged in
+            if (!userManager.isGuest()) {
+                GameState gameState = new GameState(
+                        gameLogic.getBoard(),
+                        userManager.getCurrentUser().getUsername(),
+                        currentLevel,
+                        new ArrayDeque<>(gameLogic.getMoveHistory()), // Copy history
+                        gameLogic.isGameWon() // isGameWon getter handles the check
+                );
+                gameState.setTimeElapsed(System.currentTimeMillis() - startTime); // Keep elapsed time
+                gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);
+            }
+        } else {
+            showAlert("Undo Error", "No moves to undo."); // Add feedback for no undo
         }
     }
 
@@ -586,14 +643,15 @@ public class KlotskiApp extends Application {
             gameLogic.setBoard(newBoard);
             gameLogic.setIsGameWon(false);
 
+
             /* ---------- 重新初始化历史栈 ---------- */
-            Deque<Board> history = gameLogic.getMoveHistory();
-            history.clear();                  // 清空旧记录
-            history.push(newBoard.copy());    // ★ 压入初始状态
+            Deque<Board> history = new ArrayDeque<>(); // 创建新的历史栈
+            history.push(newBoard.copy());    // ★ 压入初始状态的副本
+            gameLogic.setMoveHistory(history); // 设置新的历史栈
 
             /* ---------- 其余 UI/计时器处理 ---------- */
             currentLevel = levelNumber;
-            selectedBlock = null;
+            selectedBlock = null; // 清除选中的块
             startTime = System.currentTimeMillis();
             elapsedTime = 0;
 
@@ -606,11 +664,12 @@ public class KlotskiApp extends Application {
             if (!userManager.isGuest()) {
                 // Use a supplier to always get the current game state
                 gameFileManager.startAutoSave(userManager.getCurrentUser(), () -> {
+                    // 在 Supplier 中创建一个新的 GameState 副本，包含当前状态
                     return new GameState(
-                            gameLogic.getBoard(),
+                            gameLogic.getBoard().copy(), // 确保保存的是当前 Board 的副本
                             userManager.getCurrentUser().getUsername(),
                             currentLevel,
-                            gameLogic.getMoveHistory(),
+                            new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制移动历史
                             gameLogic.isGameWon()
                     );
                 });
@@ -632,188 +691,17 @@ public class KlotskiApp extends Application {
             gameLogic = new GameLogic(); // Should be initialized in start, but as a fallback
         }
 
+        // 使用加载的状态更新 gameLogic
         gameLogic.setBoard(state.getBoard()); // 设置棋盘状态
         // Ensure GameLogic has setMoveHistory and setIsGameWon methods
         if (state.getMoveHistory() != null) {
-            gameLogic.setMoveHistory(state.getMoveHistory()); // 设置移动历史
+            // 创建一个新的 Deque 并复制加载的历史
+            gameLogic.setMoveHistory(new ArrayDeque<>(state.getMoveHistory())); // 设置移动历史
         } else {
-            // If move history was not saved, initialize a new one
-            gameLogic.setMoveHistory(new Deque<Board>() {
-                @Override
-                public void addFirst(Board board) {
-
-                }
-
-                @Override
-                public void addLast(Board board) {
-
-                }
-
-                @Override
-                public boolean offerFirst(Board board) {
-                    return false;
-                }
-
-                @Override
-                public boolean offerLast(Board board) {
-                    return false;
-                }
-
-                @Override
-                public Board removeFirst() {
-                    return null;
-                }
-
-                @Override
-                public Board removeLast() {
-                    return null;
-                }
-
-                @Override
-                public Board pollFirst() {
-                    return null;
-                }
-
-                @Override
-                public Board pollLast() {
-                    return null;
-                }
-
-                @Override
-                public Board getFirst() {
-                    return null;
-                }
-
-                @Override
-                public Board getLast() {
-                    return null;
-                }
-
-                @Override
-                public Board peekFirst() {
-                    return null;
-                }
-
-                @Override
-                public Board peekLast() {
-                    return null;
-                }
-
-                @Override
-                public boolean removeFirstOccurrence(Object o) {
-                    return false;
-                }
-
-                @Override
-                public boolean removeLastOccurrence(Object o) {
-                    return false;
-                }
-
-                @Override
-                public boolean add(Board board) {
-                    return false;
-                }
-
-                @Override
-                public boolean offer(Board board) {
-                    return false;
-                }
-
-                @Override
-                public Board remove() {
-                    return null;
-                }
-
-                @Override
-                public Board poll() {
-                    return null;
-                }
-
-                @Override
-                public Board element() {
-                    return null;
-                }
-
-                @Override
-                public Board peek() {
-                    return null;
-                }
-
-                @Override
-                public boolean addAll(Collection<? extends Board> c) {
-                    return false;
-                }
-
-                @Override
-                public boolean removeAll(Collection<?> c) {
-                    return false;
-                }
-
-                @Override
-                public boolean retainAll(Collection<?> c) {
-                    return false;
-                }
-
-                @Override
-                public void clear() {
-
-                }
-
-                @Override
-                public void push(Board board) {
-
-                }
-
-                @Override
-                public Board pop() {
-                    return null;
-                }
-
-                @Override
-                public boolean remove(Object o) {
-                    return false;
-                }
-
-                @Override
-                public boolean containsAll(Collection<?> c) {
-                    return false;
-                }
-
-                @Override
-                public boolean contains(Object o) {
-                    return false;
-                }
-
-                @Override
-                public int size() {
-                    return 0;
-                }
-
-                @Override
-                public boolean isEmpty() {
-                    return false;
-                }
-
-                @Override
-                public Iterator<Board> iterator() {
-                    return null;
-                }
-
-                @Override
-                public Object[] toArray() {
-                    return new Object[0];
-                }
-
-                @Override
-                public <T> T[] toArray(T[] a) {
-                    return null;
-                }
-
-                @Override
-                public Iterator<Board> descendingIterator() {
-                    return null;
-                }
-            });
+            // If move history was not saved, initialize a new one with the current board state
+            Deque<Board> history = new ArrayDeque<>();
+            history.push(gameLogic.getBoard().copy());
+            gameLogic.setMoveHistory(history);
         }
         gameLogic.setIsGameWon(state.isGameWon());     // 设置游戏胜利状态
 
@@ -835,13 +723,15 @@ public class KlotskiApp extends Application {
 
         // Restart timer from the loaded elapsed time
         startTimer();
+        // Only start auto-save if user is logged in
         if (!userManager.isGuest()) {
             gameFileManager.startAutoSave(userManager.getCurrentUser(), () -> {
+                // 在 Supplier 中创建一个新的 GameState 副本，包含当前状态
                 return new GameState(
-                        gameLogic.getBoard(),
+                        gameLogic.getBoard().copy(), // 确保保存的是当前 Board 的副本
                         userManager.getCurrentUser().getUsername(),
                         currentLevel,
-                        gameLogic.getMoveHistory(),
+                        new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制移动历史
                         gameLogic.isGameWon()
                 );
             });
@@ -865,10 +755,10 @@ public class KlotskiApp extends Application {
         // Create GameState with all necessary state information
         // Ensure GameState constructor accepts moveHistory and isGameWon
         GameState state = new GameState(
-                gameLogic.getBoard(),
+                gameLogic.getBoard().copy(), // 保存当前 Board 的副本
                 userManager.getCurrentUser().getUsername(),
                 currentLevel, // Save current level
-                gameLogic.getMoveHistory(), // 包含移动历史
+                new ArrayDeque<>(gameLogic.getMoveHistory()), // 包含移动历史的副本
                 gameLogic.isGameWon() // 包含游戏胜利状态
         );
         state.setTimeElapsed(elapsedTime); // 设置已经过去的时间
@@ -880,7 +770,88 @@ public class KlotskiApp extends Application {
         }
     }
 
-    // Start the game timer
+    /**
+     * 获取并应用提示（下一步）
+     */
+    private void getAndApplyHint() {
+        // 如果游戏已胜利或求解器正在运行，则不执行
+        if (gameLogic.isGameWon() || solverProgress.isVisible()) {
+            return;
+        }
+
+        // 显示进度指示器并禁用提示按钮
+        solverProgress.setVisible(true);
+        hintButton.setDisable(true);
+
+        // 在单独的线程中运行求解器，避免阻塞 UI 线程
+        Task<Board> solverTask = new Task<Board>() {
+            @Override
+            protected Board call() throws Exception {
+                // 调用 GameLogic 的 getHint 方法，它内部会使用 Solver
+                return gameLogic.getHint();
+            }
+        };
+
+        // 任务完成时的处理
+        solverTask.setOnSucceeded(event -> {
+            // 隐藏进度指示器并启用提示按钮
+            solverProgress.setVisible(false);
+            hintButton.setDisable(false);
+
+            Board nextBoard = solverTask.getValue(); // 获取求解结果 (下一步棋盘)
+
+            if (nextBoard != null) {
+                // 将游戏状态更新到提示的下一步
+                // 这里不直接使用 moveBlock 方法，因为我们是直接设置到下一个状态
+                // 需要确保将提示的状态正确加入历史，并更新 moveCount
+                gameLogic.setBoard(nextBoard.copy()); // 设置为下一步棋盘的副本
+                // 增加移动计数（提示也算一步）
+                gameLogic.getBoard().incrementMoveCount();
+                // 保存当前状态到历史（为了支持从提示后的撤销）
+                Deque<Board> currentHistory = gameLogic.getMoveHistory();
+                currentHistory.push(gameLogic.getBoard().copy()); // 压入新的状态副本
+                gameLogic.setMoveHistory(currentHistory); // 更新 gameLogic 的历史引用（如果必要）
+
+
+                updateBoard(); // 更新 UI
+
+                // 检查提示是否导致胜利
+                if (gameLogic.isGameWon()) {
+                    showVictoryScene();
+                }
+
+                // 提示后也进行自动保存
+                if (!userManager.isGuest()) {
+                    GameState gameState = new GameState(
+                            gameLogic.getBoard().copy(), // 保存当前 Board 的副本
+                            userManager.getCurrentUser().getUsername(),
+                            currentLevel,
+                            new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制移动历史
+                            gameLogic.isGameWon()
+                    );
+                    gameState.setTimeElapsed(System.currentTimeMillis() - startTime);
+                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);
+                }
+
+            } else {
+                // 如果 getHint 返回 null，表示无解或已是最终状态
+                showAlert("提示", "当前状态无解或已是最终状态。");
+            }
+        });
+
+        // 任务失败时的处理
+        solverTask.setOnFailed(event -> {
+            // 隐藏进度指示器并启用提示按钮
+            solverProgress.setVisible(false);
+            hintButton.setDisable(false);
+            showAlert("提示", "求解失败：" + event.getSource().getException().getMessage());
+            event.getSource().getException().printStackTrace(); // 打印异常信息
+        });
+
+        // 启动任务
+        new Thread(solverTask).start();
+    }
+
 
     @Override
     public void stop() {
@@ -921,11 +892,14 @@ public class KlotskiApp extends Application {
 
     // Show an alert dialog
     private void showAlert(String title, String message) {
-        Alert alert = new Alert(Alert.AlertType.INFORMATION);
-        alert.setTitle(title);
-        alert.setHeaderText(null);
-        alert.setContentText(message);
-        alert.showAndWait();
+        // 确保在 JavaFX Application 线程中显示 Alert
+        Platform.runLater(() -> {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle(title);
+            alert.setHeaderText(null);
+            alert.setContentText(message);
+            alert.showAndWait();
+        });
     }
 
     // Main method
