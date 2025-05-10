@@ -2,17 +2,19 @@
 package ui;
 import game.Direction;
 import game.GameLogic;
+import javafx.animation.*;
 import javafx.application.Platform; // 导入 Platform
+import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.SimpleIntegerProperty;
 import javafx.concurrent.Task; // 导入 Task
 import javafx.scene.input.KeyEvent;
+import javafx.scene.text.FontPosture;
 import model.Block;
 import model.Board;
 import model.GameState;
 import ui.controls.WavePasswordConfirm;
 import user.UserManager;
 import game.LevelManager; // Import LevelManager
-import javafx.animation.KeyFrame;
-import javafx.animation.Timeline;
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -53,6 +55,47 @@ public class KlotskiApp extends Application {
     private Label moveCountLabel;
     private Label timeLabel;
 
+    private void applyFadeTransition(Button label) {
+        FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.5), label);
+        fadeTransition.setFromValue(0.0);    // 起始透明度
+        fadeTransition.setToValue(1.0);     // 结束透明度
+        fadeTransition.setCycleCount(1);     // 只播放一次
+        fadeTransition.setInterpolator(Interpolator.EASE_IN); // 缓动效果
+        // 保证Label可见性
+        label.setVisible(true);
+        fadeTransition.play();
+    }
+
+    private void applyFadeTransition(Label label) {
+        FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.1), label);
+        fadeTransition.setFromValue(0.0);    // 起始透明度
+        fadeTransition.setToValue(1.0);     // 结束透明度
+        fadeTransition.setCycleCount(1);     // 只播放一次
+        fadeTransition.setInterpolator(Interpolator.EASE_IN); // 缓动效果
+        //动画参数定制化
+//    fadeTransition.setDelay(Duration.seconds(0.5)); // 添加0.5秒延迟出现
+        fadeTransition.setRate(0.8); // 调节播放速度
+
+        // 保证Label可见性
+        label.setVisible(true);
+        fadeTransition.play();
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -75,41 +118,147 @@ public class KlotskiApp extends Application {
             }
         });
     }
+    private StackPane rootContainer; // 用于动画的根容器
+    private Scene mainScene;         // 保持场景引用
 
     // Login scene
     private void showLoginScene() {
+//    HBox hBox = new HBox();
         VBox loginBox = new VBox(15);
         loginBox.setAlignment(Pos.CENTER);
         loginBox.setPadding(new Insets(20));
         loginBox.setStyle("-fx-background-color: #f0f0f0;");
 
         Text title = new Text("Klotski Puzzle");
-        title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
+        title.setFont(Font.font("Helvetica", FontWeight.BOLD, 36));
 
         Button guestButton = new Button("Play as Guest");
         Button loginButton = new Button("Login");
         Button registerButton = new Button("Register");
+        Button aboutGame = new Button("About Game");
 
         guestButton.setMinWidth(200);
         loginButton.setMinWidth(200);
         registerButton.setMinWidth(200);
+        aboutGame.setMinWidth(200);
+
+//    guestButton.setTextFill(Color.BLUE);
 
         guestButton.setOnAction(e -> {
+            applyFadeTransition(guestButton);
             userManager.loginAsGuest();
             showMainMenu();
         });
+        loginButton.setOnAction(e -> {
+            applyFadeTransition(loginButton);
+            showLoginForm();
+        });
+        registerButton.setOnAction(e -> {
+            applyFadeTransition(registerButton);
+            showRegisterForm();
+        });
+        aboutGame.setOnAction(e ->{
+            applyFadeTransition(aboutGame);
+            showGameIntroduction();
+        });
 
-        loginButton.setOnAction(e -> showLoginForm());
-        registerButton.setOnAction(e -> showRegisterForm());
-
-        loginBox.getChildren().addAll(title, guestButton, loginButton, registerButton);
+        loginBox.getChildren().addAll(title, guestButton, loginButton, registerButton, aboutGame);
 
         Scene scene = new Scene(loginBox, 400, 300);
-        scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
+        primaryStage.setScene(scene);
+    }
+    private void showGameIntroduction() {
+        VBox vbox = new VBox(20);
+        vbox.setAlignment(Pos.BOTTOM_CENTER);
+        vbox.setPadding(new Insets(20));
+        vbox.setStyle("-fx-background-color: #ffffff;");
+        vbox.setFillWidth(true);
+
+        // 创建可滚动文本容器
+        Label introduction = new Label();
+        introduction.setWrapText(true);
+        introduction.setMaxWidth(Double.MAX_VALUE);
+        introduction.setStyle("-fx-font-size: 16px; -fx-line-spacing: 0.5em;");
+
+        // 将Label包裹在ScrollPane中
+        ScrollPane scrollPane = new ScrollPane(introduction);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER); // 禁用水平滚动条
+        scrollPane.setVvalue(0); // 初始滚动位置在顶部
+
+        // 设置固定高度确保滚动区域可见
+        scrollPane.setPrefHeight(380);
+
+        // 原始文本内容
+        String fullText =
+                """
+                        Enter the strategic heart of ancient China, where history and logic intertwine. \
+                    Chinese Klotski: Three Kingdoms Escape reinvents the classic sliding puzzle \
+                    by weaving it into the epic saga of the Three Kingdoms. Guide Cao Cao, the ambitious \
+                    warlord (a towering 2x2 block), to freedom through a labyrinth of allies \
+                    and rivals—each piece a legend like the loyal Guanyu (1x2) or cunning Zhang Fei (1x1).
+                        Every level is a battlefield of wits: maneuver intricately shaped blocks, each bearing \
+                    the name and spirit of iconic heroes, to carve a path to victory. But tread carefully—one wrong move could trap Cao Cao forever.
+                        Drenched in stunning classical Chinese art and haunting melodies, the game transforms each puzzle into a chapter of history. \
+                    Will your strategy rival the brilliance of ancient tacticians? Sharpen your mind, honor the legends, and escape the past—one slide at a time."""; // 保持原有完整文本
+
+        Label label = new Label("Can you master the puzzle… and rewrite history?");
+        label.fontProperty().set(Font.font("System", FontPosture.ITALIC, 20));
+        label.setWrapText(true);
+        label.setStyle("-fx-background-color: #ffffff; -fx-text-fill: #fd0001");
+        label.setOpacity(0.0);
+        label.setVisible(false);
+        // 创建打字机动画效果
+        final IntegerProperty i = new SimpleIntegerProperty(0);
+        Timeline timeline = new Timeline();
+
+        Button backButton = new Button("Back");
+        backButton.setMinWidth(200);
+
+        Region spacer = new Region();
+        VBox.setVgrow(spacer, Priority.ALWAYS);
+
+        backButton.setOnAction(e -> {
+            timeline.stop(); // 停止动画
+            applyFadeTransition(backButton);
+            showLoginScene();
+        });
+
+        Button skipButton = new Button("Skip");
+        skipButton.setOnAction(e -> {
+            timeline.stop();
+            introduction.setText(fullText);
+            scrollPane.setVvalue(1.0);
+//      skipButton.setDisable(true);
+            skipButton.setVisible(false);
+            applyFadeTransition(label);
+        });
+
+        KeyFrame keyFrame = new KeyFrame(Duration.millis(20), event -> {
+            if (i.get() >= fullText.length()) {
+                timeline.stop();
+                skipButton.setVisible(false);
+                applyFadeTransition(label);
+                return;
+            }
+            introduction.setText(fullText.substring(0, i.get()));
+            scrollPane.setVvalue(1.0); // 自动滚动到底部
+            i.set(i.get() + 1);
+        });
+        vbox.getChildren().add(skipButton);
+
+        timeline.getKeyFrames().add(keyFrame);
+        timeline.setCycleCount(Animation.INDEFINITE);
+
+        // 在界面显示后启动动画
+        Platform.runLater(() -> timeline.play());
+
+        vbox.getChildren().addAll(scrollPane, spacer, label, backButton);
+        Scene scene = new Scene(vbox, 600, 500); // 适当增加窗口高度
         primaryStage.setScene(scene);
     }
 
-    // Login form
+        // Login form
     private void showLoginForm() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -811,7 +960,6 @@ public class KlotskiApp extends Application {
                 Deque<Board> currentHistory = gameLogic.getMoveHistory();
                 currentHistory.push(gameLogic.getBoard().copy()); // 压入新的状态副本
                 gameLogic.setMoveHistory(currentHistory); // 更新 gameLogic 的历史引用（如果必要）
-
 
                 updateBoard(); // 更新 UI
 
