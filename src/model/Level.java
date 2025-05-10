@@ -1,62 +1,49 @@
-// Level.java
 package model;
 
-import javafx.scene.paint.Color;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * 关卡数据模型 —— 纯 POJO，不再依赖 JavaFX 的 Color。
+ */
 public class Level implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    private String name;
-    private List<BlockData> blockData;
+    private final String name;
+    private final List<BlockData> blockData = new ArrayList<>();
 
     public Level(String name) {
         this.name = name;
-        this.blockData = new ArrayList<>();
     }
 
     public String getName() {
         return name;
     }
-
     public List<BlockData> getBlockData() {
         return blockData;
     }
 
-    public void addBlock(int x, int y, int width, int height, String type, Color color) {
-        blockData.add(new BlockData(x, y, width, height, type, String.valueOf(color)));
+    /** 关卡内新增一个方块（颜色改为 16 进制 / CSS 颜色字符串） */
+    public void addBlock(int x,int y,int w,int h,String type,String colorHex){
+        blockData.add(new BlockData(x,y,w,h,type,colorHex));
     }
 
-    // Apply level data to a board
-// Apply level data to a board
-    public void applyToBoard(Board board) {
+    /** 把关卡布局写入棋盘 */
+    public void applyToBoard(Board board){
         board.getBlocks().clear();
         board.resetMoveCount();
-
-        for (BlockData data : blockData) {
-            // Color color = Color.valueOf(data.color); // Remove this line
-            Block block = new Block(data.x, data.y, data.width, data.height, data.type, data.color); // Use data.color directly
-            board.addBlock(block);
+        for(BlockData d:blockData){
+            board.addBlock(new Block(d.x,d.y,d.w,d.h,d.type,d.colorHex));
         }
     }
 
-    // Inner class to store block data in a serializable format
-    public static class BlockData implements Serializable {
+    /* ---------- 内部可序列化结构 ---------- */
+    public static class BlockData implements Serializable{
         private static final long serialVersionUID = 1L;
-
-        public int x, y, width, height;
-        public String type;
-        public String color;
-
-        public BlockData(int x, int y, int width, int height, String type, String color) {
-            this.x = x;
-            this.y = y;
-            this.width = width;
-            this.height = height;
-            this.type = type;
-            this.color = color;
+        public int x,y,w,h; public String type,colorHex;
+        public BlockData(int x,int y,int w,int h,String type,String colorHex){
+            this.x=x; this.y=y; this.w=w; this.h=h; this.type=type; this.colorHex=colorHex;
         }
     }
 }

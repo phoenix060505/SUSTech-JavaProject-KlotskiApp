@@ -7,6 +7,7 @@ import javafx.application.Platform; // 导入 Platform
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.concurrent.Task; // 导入 Task
+import javafx.scene.Node;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.text.FontPosture;
 import model.Block;
@@ -80,21 +81,6 @@ public class KlotskiApp extends Application {
         label.setVisible(true);
         fadeTransition.play();
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     @Override
     public void start(Stage primaryStage) {
@@ -530,7 +516,6 @@ public class KlotskiApp extends Application {
         // 事件过滤器：始终能收到键盘（不受焦点限制）
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
             if (gameLogic.isGameWon()) return; // 游戏胜利后禁用键盘控制
-
             switch (e.getCode()) {
                 case UP    -> moveSelected(Direction.UP);
                 case DOWN  -> moveSelected(Direction.DOWN);
@@ -576,10 +561,9 @@ public class KlotskiApp extends Application {
         menuButton.setMinWidth(200);
 
         newGameButton.setOnAction(e -> {
-            // When starting a new game from victory, ideally use the selected level from main menu
-            // For now, let's start with the last played level or level 1
-            startNewGame(currentLevel); // Start a new game with the current level
             showGameScene();
+            startNewGame(currentLevel);
+
         });
 
         menuButton.setOnAction(e -> showMainMenu());
@@ -649,55 +633,43 @@ public class KlotskiApp extends Application {
     }
 
     // Highlight the selected block
+    /** 高亮当前选中方块，若未选中则撤销高亮 */
     private void updateSelectedBlockHighlight() {
-        // Ensure boardGrid is not null
-        if (boardGrid == null) {
-            // This case should ideally not happen if updateBoard is called correctly after showGameScene
-            return;
-        }
 
-        // Remove highlight from previously selected block
-        for (int i = 0; i < boardGrid.getChildren().size(); i++) {
-            if (boardGrid.getChildren().get(i) instanceof Rectangle) {
-                Rectangle rect = (Rectangle) boardGrid.getChildren().get(i);
-                // Check if this rectangle represents a block (not an empty cell)
-                // Assuming cells are exactly 70x70, blocks are larger or different dimensions
-                if (rect.getWidth() > 0 && rect.getHeight() > 0 && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
-                    // Reset stroke
+        /* --- 1. 防御式判空 --- */
+        if (boardGrid == null) return;
+
+        /* --- 2. 先清除旧高亮（仍按宽高≠70 判断是棋子而非空格） --- */
+        for (Node node : boardGrid.getChildren()) {
+            if (node instanceof Rectangle rect) {
+                if (rect.getWidth() > 0 && rect.getHeight() > 0
+                        && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
                     rect.setStroke(Color.BLACK);
                     rect.setStrokeWidth(2);
                 }
             }
         }
 
+        /* --- 3. 为新选中方块加高亮 --- */
+        if (selectedBlock == null) return;
 
-        // Add highlight to the currently selected block
-        if (selectedBlock != null) {
-            for (int i = 0; i < boardGrid.getChildren().size(); i++) {
-                if (boardGrid.getChildren().get(i) instanceof Rectangle) {
-                    Rectangle rect = (Rectangle) boardGrid.getChildren().get(i);
+        for (Node node : boardGrid.getChildren()) {
+            if (!(node instanceof Rectangle rect)) continue;
 
-                    Integer col = GridPane.getColumnIndex(rect);
-                    Integer row = GridPane.getRowIndex(rect);
+            /* 3-1. 取得网格位置信息（空值默认 0 / 1） */
+            int col   = GridPane.getColumnIndex(rect) == null ? 0 : GridPane.getColumnIndex(rect);
+            int row   = GridPane.getRowIndex (rect) == null ? 0 : GridPane.getRowIndex (rect);
+            int spanX = GridPane.getColumnSpan(rect) == null ? 1 : GridPane.getColumnSpan(rect);
+            int spanY = GridPane.getRowSpan   (rect) == null ? 1 : GridPane.getRowSpan   (rect);
 
-                    if (col != null && row != null) {
-                        // Find the block at this rectangle's position and dimensions
-                        // Need to iterate through blocks to find the one matching this rectangle
-                        // This might be inefficient, consider storing block reference in Rectangle's user data
-                        for (Block block : gameLogic.getBoard().getBlocks()) {
-                            if (block.getX() == col && block.getY() == row &&
-                                    block.getWidth() == GridPane.getColumnSpan(rect) &&
-                                    block.getHeight() == GridPane.getRowSpan(rect)) {
+            /* 3-2. 判断该 Rectangle 是否对应 selectedBlock */
+            if (selectedBlock.getX() == col && selectedBlock.getY() == row
+                    && selectedBlock.getWidth()  == spanX
+                    && selectedBlock.getHeight() == spanY) {
 
-                                if (block == selectedBlock) {
-                                    rect.setStroke(Color.WHITE);
-                                    rect.setStrokeWidth(3);
-                                    return; // Found the selected block, exit
-                                }
-                            }
-                        }
-                    }
-                }
+                rect.setStroke(Color.WHITE);
+                rect.setStrokeWidth(3);
+                break;                      // 找到即可退出循环
             }
         }
     }
@@ -717,17 +689,16 @@ public class KlotskiApp extends Application {
                 }
                 // Auto-save only if user is logged in
                 if (!userManager.isGuest()) {
-                    GameState gameState = new GameState(
+                    GameState gs=new GameState(
                             gameLogic.getBoard(),
                             userManager.getCurrentUser().getUsername(),
                             currentLevel,
-                            new ArrayDeque<>(gameLogic.getMoveHistory()), // Copy history
-                            gameLogic.isGameWon()
-                    );
-                    gameState.setTimeElapsed(System.currentTimeMillis() - startTime);  // 更新时间
-
-                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);  // 手动保存
+                            gameLogic.getMoveHistory(),
+                            gameLogic.isGameWon());
+                    gs.setTimeElapsed(System.currentTimeMillis()-startTime);
+                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(),gs);
                 }
+
 
                 // Update move count display after a successful move
                 moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
@@ -845,10 +816,10 @@ public class KlotskiApp extends Application {
         // Ensure GameLogic has setMoveHistory and setIsGameWon methods
         if (state.getMoveHistory() != null) {
             // 创建一个新的 Deque 并复制加载的历史
-            gameLogic.setMoveHistory(new ArrayDeque<>(state.getMoveHistory())); // 设置移动历史
+            gameLogic.setMoveHistory(state.getMoveHistory()); // 设置移动历史
         } else {
             // If move history was not saved, initialize a new one with the current board state
-            Deque<Board> history = new ArrayDeque<>();
+            java.util.Deque<model.Board> history=new java.util.ArrayDeque<>();
             history.push(gameLogic.getBoard().copy());
             gameLogic.setMoveHistory(history);
         }
@@ -950,12 +921,7 @@ public class KlotskiApp extends Application {
             Board nextBoard = solverTask.getValue(); // 获取求解结果 (下一步棋盘)
 
             if (nextBoard != null) {
-                // 将游戏状态更新到提示的下一步
-                // 这里不直接使用 moveBlock 方法，因为我们是直接设置到下一个状态
-                // 需要确保将提示的状态正确加入历史，并更新 moveCount
-                gameLogic.setBoard(nextBoard.copy()); // 设置为下一步棋盘的副本
-                // 增加移动计数（提示也算一步）
-                gameLogic.getBoard().incrementMoveCount();
+                gameLogic.setBoard(nextBoard.copy());
                 // 保存当前状态到历史（为了支持从提示后的撤销）
                 Deque<Board> currentHistory = gameLogic.getMoveHistory();
                 currentHistory.push(gameLogic.getBoard().copy()); // 压入新的状态副本
