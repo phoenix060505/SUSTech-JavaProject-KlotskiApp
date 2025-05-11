@@ -2,7 +2,7 @@ package game;
 
 import model.Level;
 
-/** 预置关卡集合 */
+/* 预置关卡集合 */
 public class LevelManager {
 
     /* 简单的颜色常量（CSS / HTML 格式） */

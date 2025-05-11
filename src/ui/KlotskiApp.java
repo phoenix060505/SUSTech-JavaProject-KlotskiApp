@@ -46,7 +46,7 @@ public class KlotskiApp extends Application {
     private long elapsedTime;
     private Timeline timer;
     private int currentLevel = 1;
-
+    private Button autoSolveButton;
     private LevelManager levelManager; // Add LevelManager field
     private Button hintButton; // 添加提示按钮字段
     private ProgressIndicator solverProgress; // 添加求解器进度指示器
@@ -55,6 +55,9 @@ public class KlotskiApp extends Application {
     private GridPane boardGrid;
     private Label moveCountLabel;
     private Label timeLabel;
+    //auto-solve
+    private boolean isAutoSolving = false;
+    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.01;
 
     private void applyFadeTransition(Button label) {
         FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.5), label);
@@ -479,7 +482,9 @@ public class KlotskiApp extends Application {
         Button undoButton  = new Button("Undo");
         Button saveButton  = new Button("Save");
         Button menuButton  = new Button("Menu");
-        hintButton = new Button("Hint"); // 初始化提示按钮
+        hintButton = new Button("Hint");// 初始化提示按钮
+        autoSolveButton = new Button("Auto-Solve");//初始化自动求解按钮
+
         solverProgress = new ProgressIndicator(-1); // 初始化进度指示器
         solverProgress.setVisible(false); // 默认隐藏
 
@@ -498,15 +503,16 @@ public class KlotskiApp extends Application {
             showMainMenu();
         });
         hintButton.setOnAction(e -> getAndApplyHint()); // 添加提示按钮事件处理
+        autoSolveButton.setOnAction(e -> toggleAutoSolve()); // Assign action
 
         controlPanel.getChildren().addAll(
                 upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, hintButton, menuButton, solverProgress); // 添加提示按钮和进度指示器
+                undoButton, saveButton, hintButton,autoSolveButton, menuButton, solverProgress); // 添加提示按钮和进度指示器
         root.setBottom(controlPanel);
 
         /* ---------- 防止按钮抢键盘 ---------- */
         for (Button b : List.of(upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, hintButton, menuButton)) { // 将提示按钮添加到列表中
+                undoButton, saveButton, hintButton,autoSolveButton, menuButton)) { // 将提示按钮添加到列表中
             b.setFocusTraversable(false);
         }
 
@@ -515,7 +521,7 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         // 事件过滤器：始终能收到键盘（不受焦点限制）
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
-            if (gameLogic.isGameWon()) return; // 游戏胜利后禁用键盘控制
+            if (gameLogic.isGameWon()|| isAutoSolving) return; // 游戏胜利后禁用键盘控制
             switch (e.getCode()) {
                 case UP    -> moveSelected(Direction.UP);
                 case DOWN  -> moveSelected(Direction.DOWN);
@@ -524,6 +530,8 @@ public class KlotskiApp extends Application {
                 case Z     -> { if (e.isControlDown()) undo(); }
                 case S     -> { if (e.isControlDown()) saveGame(); }
                 case H     -> { if (e.isControlDown()) getAndApplyHint(); } // Ctrl+H 触发提示
+                case A     -> { if (e.isControlDown()) toggleAutoSolve(); } // Ctrl+A 触发自动求解
+                case ESCAPE -> showMainMenu();
             }
         });
 
@@ -611,7 +619,7 @@ public class KlotskiApp extends Application {
             // Make blocks interactive
             rect.setOnMouseClicked(e -> {
                 // 游戏胜利后禁用块选择
-                if (gameLogic.isGameWon()) return;
+                if (gameLogic.isGameWon()|| isAutoSolving) return;
                 selectedBlock = block;
                 updateSelectedBlockHighlight();
             });
@@ -677,7 +685,7 @@ public class KlotskiApp extends Application {
     // Move the selected block
     private void moveSelected(Direction direction) {
         // 游戏胜利后禁用移动
-        if (gameLogic != null && gameLogic.isGameWon()) return;
+        if (gameLogic != null && (gameLogic.isGameWon()|| isAutoSolving)) return;
 
 
         if (selectedBlock != null && gameLogic != null) { // Add null check for gameLogic
@@ -723,9 +731,9 @@ public class KlotskiApp extends Application {
     // Undo last move
     private void undo() {
         // 游戏胜利后禁用撤销
-        if (gameLogic != null && gameLogic.isGameWon()) return;
+        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) return;
 
-        if (gameLogic != null && gameLogic.undoMove()) { // Add null check for gameLogic
+        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) { // Add null check for gameLogic
             updateBoard();
             // Update move count display after undo
             moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
@@ -776,8 +784,8 @@ public class KlotskiApp extends Application {
             elapsedTime = 0;
 
             updateBoard();
-            moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
-            timeLabel.setText("Time: " + formatTime(elapsedTime));
+            if (moveCountLabel != null) moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+            if (timeLabel != null) timeLabel.setText("Time: " + formatTime(elapsedTime));
             startTimer();
 
             // Only start auto-save if the user is not a guest
@@ -870,7 +878,10 @@ public class KlotskiApp extends Application {
             showAlert("Save Error", "No game to save.");
             return;
         }
-
+        if (isAutoSolving) {
+            showAlert("Save Game", "Cannot save while auto-solving is in progress.");
+            return;
+        }
         elapsedTime = System.currentTimeMillis() - startTime;
         // Create GameState with all necessary state information
         // Ensure GameState constructor accepts moveHistory and isGameWon
@@ -895,7 +906,7 @@ public class KlotskiApp extends Application {
      */
     private void getAndApplyHint() {
         // 如果游戏已胜利或求解器正在运行，则不执行
-        if (gameLogic.isGameWon() || solverProgress.isVisible()) {
+        if (gameLogic.isGameWon() || (solverProgress != null && solverProgress.isVisible()) || isAutoSolving) {
             return;
         }
 
@@ -967,6 +978,136 @@ public class KlotskiApp extends Application {
     }
 
 
+// Auto-solve functionality
+    private void toggleAutoSolve() {
+        if (isAutoSolving) {
+            stopAutoSolving();
+        } else {
+            if (gameLogic == null || gameLogic.getBoard() == null) {
+                showAlert("Auto-Solve", "Please start or load a game first.");
+                return;
+            }
+            if (gameLogic.isGameWon()) {
+                showAlert("Auto-Solve", "The game is already won!");
+                return;
+            }
+            startAutoSolving();
+        }
+    }
+
+    private void startAutoSolving() {
+        isAutoSolving = true;
+        autoSolveButton.setText("Stop");
+        if (hintButton != null) { // Ensure hintButton is initialized
+            hintButton.setDisable(true);
+        }
+        // Further disabling of other game controls (like directional buttons) can be added here
+        // by making them class members and calling setDisable(true).
+        // For now, interaction points will check 'isAutoSolving'.
+
+        if (solverProgress != null) { // Ensure solverProgress is initialized
+            solverProgress.setVisible(true);
+        }
+
+        performAutoSolveStep(); // Start the first step
+    }
+
+    private void stopAutoSolving() {
+        isAutoSolving = false;
+        if (autoSolveButton != null) { // Ensure button is initialized
+            autoSolveButton.setText("Auto-Solve");
+        }
+        if (hintButton != null && gameLogic != null) { // Ensure buttons & gameLogic are initialized
+            hintButton.setDisable(gameLogic.isGameWon());
+        }
+        // Re-enable other game controls if they were disabled.
+
+        if (solverProgress != null) { // Ensure solverProgress is initialized
+            solverProgress.setVisible(false);
+        }
+    }
+
+    private void performAutoSolveStep() {
+        if (!isAutoSolving || gameLogic.isGameWon()) {
+            if (isAutoSolving && gameLogic != null && !gameLogic.isGameWon()) {
+                // Only show this if auto-solving was active and did not result in a win (e.g. stopped manually, or no more hints)
+            }
+            stopAutoSolving(); // Ensure controls are reset and flag is false
+            return;
+        }
+
+        // Ensure solverProgress is visible during the step finding
+        if (solverProgress != null) solverProgress.setVisible(true);
+
+
+        Task<Board> solverTask = new Task<Board>() {
+            @Override
+            protected Board call() throws Exception {
+                if (gameLogic == null) return null; // Should not happen if start checks gameLogic
+                return gameLogic.getHint(); // This is the core call
+            }
+        };
+
+        solverTask.setOnSucceeded(event -> {
+            Board nextBoard = solverTask.getValue();
+
+            if (!isAutoSolving) { // Check if stopped while task was running
+                stopAutoSolving();
+                return;
+            }
+
+            if (nextBoard != null) {
+                gameLogic.setBoard(nextBoard.copy()); // Apply the hint
+
+                Deque<Board> currentHistory = gameLogic.getMoveHistory();
+                if (currentHistory == null) currentHistory = new ArrayDeque<>();
+                currentHistory.push(gameLogic.getBoard().copy());
+                gameLogic.setMoveHistory(currentHistory);
+
+                updateBoard(); // Refreshes UI and moveCountLabel
+
+                if (!userManager.isGuest()) {
+                    GameState gs = new GameState(
+                            gameLogic.getBoard().copy(),
+                            userManager.getCurrentUser().getUsername(),
+                            currentLevel,
+                            new ArrayDeque<>(gameLogic.getMoveHistory()),
+                            gameLogic.isGameWon());
+                    gs.setTimeElapsed(System.currentTimeMillis() - startTime); // elapsedTime is updated by timer
+                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gs);
+                }
+
+                if (gameLogic.isGameWon()) {
+                    showVictoryScene(); // This should also stop the game timer
+                    stopAutoSolving();  // Finalize auto-solve state
+                } else if (isAutoSolving) { // Check flag again before scheduling next step
+                    PauseTransition pause = new PauseTransition(Duration.seconds(AUTO_SOLVE_STEP_DELAY_SECONDS));
+                    pause.setOnFinished(e -> performAutoSolveStep());
+                    pause.play();
+                }
+            } else { // No next hint found
+                stopAutoSolving();
+                if (gameLogic != null && !gameLogic.isGameWon()) {
+                    showAlert("Auto-Solve", "No further hints available or the puzzle is unsolvable from this state.");
+                }
+            }
+        });
+
+        solverTask.setOnFailed(event -> {
+            if (!isAutoSolving && solverTask.getException() instanceof InterruptedException) {
+                // Task might be interrupted if thread is shut down, common on app close.
+                System.out.println("Auto-solve task interrupted, possibly due to application shutdown.");
+            } else {
+                showAlert("Auto-Solve Error", "Solver failed: " + event.getSource().getException().getMessage());
+                event.getSource().getException().printStackTrace();
+            }
+            stopAutoSolving(); // Ensure cleanup even on failure
+        });
+
+        new Thread(solverTask).start();
+    }
+
+    // Initialize the game file manager
     @Override
     public void stop() {
         if (gameFileManager != null) {

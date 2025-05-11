@@ -12,6 +12,9 @@ public class GameLogic {
     private boolean isGameWon;
     private Deque<Board> moveHistory;
     private Solver solver;
+    // Fields for step-by-step hints
+    private List<Board> activeSolutionHintPath = null;
+    private int currentHintStepInActivePath = 0; // Index of the board state *to be shown next* from activeSolutionHintPath
 
     public GameLogic() {
         moveHistory = new ArrayDeque<>();
@@ -22,6 +25,11 @@ public class GameLogic {
         this.board = board;
         // 设置新棋盘后，重新检查胜利状态
         this.isGameWon = isGameWon();
+    }
+
+    public void clearActiveHintPath() {
+        this.activeSolutionHintPath = null;
+        this.currentHintStepInActivePath = 0;
     }
 
     public void setMoveHistory(Deque<Board> moveHistory) {
@@ -35,6 +43,7 @@ public class GameLogic {
         board = new Board();
         isGameWon = false;
         moveHistory.clear();
+        clearActiveHintPath(); // Reset hints for a new game
 
         // Initialize with standard layout
         Block caoBlock = new Block(1, 0, 2, 2, "CaoCao", "RED");
