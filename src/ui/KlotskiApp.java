@@ -57,7 +57,7 @@ public class KlotskiApp extends Application {
     private Label timeLabel;
     //auto-solve
     private boolean isAutoSolving = false;
-    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.01;
+    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.001;
 
     private void applyFadeTransition(Button label) {
         FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.5), label);
@@ -728,32 +728,52 @@ public class KlotskiApp extends Application {
         }
     }
 
-    // Undo last move
+    // KlotskiApp.java -> undo() 方法
     private void undo() {
-        // 游戏胜利后禁用撤销
-        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) return;
+        System.out.println("[APP_UNDO] Undo button clicked. isAutoSolving: " + isAutoSolving);
+        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) {
+            System.out.println("  Undo blocked: game won or auto-solving.");
+            return;
+        }
 
-        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) { // Add null check for gameLogic
-            updateBoard();
-            // Update move count display after undo
-            moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+        if (gameLogic != null) {
+            System.out.println("  Before gameLogic.undoMove(), history size: " + (gameLogic.getMoveHistory() != null ? gameLogic.getMoveHistory().size() : "null"));
+            boolean undoSuccess = gameLogic.undoMove();
+            System.out.println("  gameLogic.undoMove() returned: " + undoSuccess);
 
-            // Auto-save after undo if user is logged in
-            if (!userManager.isGuest()) {
-                GameState gameState = new GameState(
-                        gameLogic.getBoard(),
-                        userManager.getCurrentUser().getUsername(),
-                        currentLevel,
-                        new ArrayDeque<>(gameLogic.getMoveHistory()), // Copy history
-                        gameLogic.isGameWon() // isGameWon getter handles the check
-                );
-                gameState.setTimeElapsed(System.currentTimeMillis() - startTime); // Keep elapsed time
-                gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);
+            if (undoSuccess) {
+                updateBoard();
+                if (moveCountLabel != null && gameLogic.getBoard() != null) {
+                    moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+                }
+                System.out.println("  After undo, history size: " + (gameLogic.getMoveHistory() != null ? gameLogic.getMoveHistory().size() : "null"));
+                if (gameLogic.getMoveHistory() != null && !gameLogic.getMoveHistory().isEmpty() && gameLogic.getBoard() != null) {
+                    System.out.println("  Current board moveCount after undo: " + gameLogic.getBoard().getMoveCount() +
+                            ". History top moveCount: " + gameLogic.getMoveHistory().peek().getMoveCount());
+                }
+
+
+                // Auto-save after undo if user is logged in (保持不变)
+                if (!userManager.isGuest()) {
+                    GameState gameState = new GameState(
+                            gameLogic.getBoard(), // 使用当前 gameLogic 中的 board
+                            userManager.getCurrentUser().getUsername(),
+                            currentLevel,
+                            new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制当前历史
+                            gameLogic.isGameWon()
+                    );
+                    gameState.setTimeElapsed(System.currentTimeMillis() - startTime);
+                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gameState);
+                }
+            } else {
+                showAlert("Undo Error", "No moves to undo.");
             }
         } else {
-            showAlert("Undo Error", "No moves to undo."); // Add feedback for no undo
+            showAlert("Undo Error", "Game logic not available.");
         }
     }
+
+
 
     // Start a new game with a specific level - Modified to accept levelNumber
     private void startNewGame(int levelNumber) {
