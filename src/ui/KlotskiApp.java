@@ -1,7 +1,7 @@
 // KlotskiApp.java
 package ui;
-import game.Direction;
-import game.GameLogic;
+import game.*;
+import game.AboutGame;
 import javafx.animation.*;
 import javafx.application.Platform; // 导入 Platform
 import javafx.beans.property.IntegerProperty;
@@ -15,13 +15,11 @@ import model.Board;
 import model.GameState;
 import ui.controls.WavePasswordConfirm;
 import user.UserManager;
-import game.LevelManager; // Import LevelManager
 import javafx.application.Application;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
-import javafx.scene.input.KeyCode;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
@@ -34,9 +32,11 @@ import util.GameFileManager;
 import ui.controls.WaveTextField;
 import ui.controls.WavePasswordField;
 import java.util.*;
-import java.util.stream.Stream;
+
+import static game.AboutGame.applyFadeTransition;
 
 public class KlotskiApp extends Application {
+    // Game components
     private GameLogic gameLogic;
     private GameFileManager gameFileManager;
     private UserManager userManager;
@@ -46,44 +46,21 @@ public class KlotskiApp extends Application {
     private long elapsedTime;
     private Timeline timer;
     private int currentLevel = 1;
-    private Button autoSolveButton;
+    //Hint
     private LevelManager levelManager; // Add LevelManager field
     private Button hintButton; // 添加提示按钮字段
     private ProgressIndicator solverProgress; // 添加求解器进度指示器
-
     // UI components
     private GridPane boardGrid;
     private Label moveCountLabel;
     private Label timeLabel;
-    //auto-solve
+    //Auto-solve
+    private AutoSolve autoSolver;
+    private Button autoSolveButton;
     private boolean isAutoSolving = false;
     private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.001;
-
-    private void applyFadeTransition(Button label) {
-        FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.5), label);
-        fadeTransition.setFromValue(0.0);    // 起始透明度
-        fadeTransition.setToValue(1.0);     // 结束透明度
-        fadeTransition.setCycleCount(1);     // 只播放一次
-        fadeTransition.setInterpolator(Interpolator.EASE_IN); // 缓动效果
-        // 保证Label可见性
-        label.setVisible(true);
-        fadeTransition.play();
-    }
-
-    private void applyFadeTransition(Label label) {
-        FadeTransition fadeTransition = new FadeTransition(Duration.seconds(1.1), label);
-        fadeTransition.setFromValue(0.0);    // 起始透明度
-        fadeTransition.setToValue(1.0);     // 结束透明度
-        fadeTransition.setCycleCount(1);     // 只播放一次
-        fadeTransition.setInterpolator(Interpolator.EASE_IN); // 缓动效果
-        //动画参数定制化
-//    fadeTransition.setDelay(Duration.seconds(0.5)); // 添加0.5秒延迟出现
-        fadeTransition.setRate(0.8); // 调节播放速度
-
-        // 保证Label可见性
-        label.setVisible(true);
-        fadeTransition.play();
-    }
+    //AboutGame
+    private final AboutGame aboutGame = new AboutGame();
 
     @Override
     public void start(Stage primaryStage) {
@@ -92,11 +69,9 @@ public class KlotskiApp extends Application {
         userManager = new UserManager();
         gameFileManager = new GameFileManager(); // Initialize the GameFileManager
         levelManager = new LevelManager();
-
         primaryStage.setTitle("Klotski Puzzle");
         showLoginScene();
         primaryStage.show();
-
         // Add a shutdown hook to clean up resources when the application closes
         primaryStage.setOnCloseRequest(event -> {
             if (gameFileManager != null) {
@@ -109,10 +84,9 @@ public class KlotskiApp extends Application {
     }
     private StackPane rootContainer; // 用于动画的根容器
     private Scene mainScene;         // 保持场景引用
-
     // Login scene
     private void showLoginScene() {
-//    HBox hBox = new HBox();
+    //HBox hBox = new HBox();
         VBox loginBox = new VBox(15);
         loginBox.setAlignment(Pos.CENTER);
         loginBox.setPadding(new Insets(20));
@@ -191,7 +165,7 @@ public class KlotskiApp extends Application {
                         Drenched in stunning classical Chinese art and haunting melodies, the game transforms each puzzle into a chapter of history. \
                     Will your strategy rival the brilliance of ancient tacticians? Sharpen your mind, honor the legends, and escape the past—one slide at a time."""; // 保持原有完整文本
 
-        Label label = new Label("Can you master the puzzle… and rewrite history?");
+        Button label = new Button("Can you master the puzzle… and rewrite history?");
         label.fontProperty().set(Font.font("System", FontPosture.ITALIC, 20));
         label.setWrapText(true);
         label.setStyle("-fx-background-color: #ffffff; -fx-text-fill: #fd0001");
@@ -246,8 +220,7 @@ public class KlotskiApp extends Application {
         Scene scene = new Scene(vbox, 600, 500); // 适当增加窗口高度
         primaryStage.setScene(scene);
     }
-
-        // Login form
+    // Login form
     private void showLoginForm() {
         GridPane grid = new GridPane();
         grid.setAlignment(Pos.CENTER);
@@ -298,7 +271,6 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         primaryStage.setScene(scene);
     }
-
     // Register form
     private void showRegisterForm() {
         GridPane grid = new GridPane();
@@ -358,7 +330,6 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         primaryStage.setScene(scene);
     }
-
     // Main menu
     private void showMainMenu() {
         if (gameFileManager != null) {
@@ -441,10 +412,9 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         primaryStage.setScene(scene);
     }
-
     // Game scene
-// KlotskiApp.java ── 完整替换原来的 showGameScene()
     private void showGameScene() {
+
         /* ---------- 根布局 ---------- */
         BorderPane root = new BorderPane();
         root.setPadding(new Insets(10));
@@ -487,23 +457,36 @@ public class KlotskiApp extends Application {
 
         solverProgress = new ProgressIndicator(-1); // 初始化进度指示器
         solverProgress.setVisible(false); // 默认隐藏
-
-        // 禁用游客存档
         saveButton.setDisable(userManager.isGuest());
+
+        autoSolver = new AutoSolve(
+                gameLogic,
+                autoSolveButton,
+                hintButton,
+                solverProgress,
+                this::updateBoard,
+                this::showVictoryScene,
+                this::showAlert,
+                () -> elapsedTime
+        );
+        // 禁用游客存档
 
         /* --- 按钮事件 --- */
         upButton.setOnAction(e    -> moveSelected(Direction.UP));
         downButton.setOnAction(e  -> moveSelected(Direction.DOWN));
         leftButton.setOnAction(e  -> moveSelected(Direction.LEFT));
         rightButton.setOnAction(e -> moveSelected(Direction.RIGHT));
+        hintButton.setOnAction(e -> getAndApplyHint()); // 添加提示按钮事件处理
+        autoSolveButton.setOnAction(e -> autoSolver.toggleAutoSolve()); // Assign action
         undoButton.setOnAction(e  -> undo());
         saveButton.setOnAction(e  -> saveGame());
         menuButton.setOnAction(e  -> {
+            if (autoSolver != null && autoSolver.isAutoSolving()) {
+                autoSolver.toggleAutoSolve(); // 停止自动求解
+            }
             stopTimer();
             showMainMenu();
         });
-        hintButton.setOnAction(e -> getAndApplyHint()); // 添加提示按钮事件处理
-        autoSolveButton.setOnAction(e -> toggleAutoSolve()); // Assign action
 
         controlPanel.getChildren().addAll(
                 upButton, downButton, leftButton, rightButton,
@@ -515,9 +498,8 @@ public class KlotskiApp extends Application {
                 undoButton, saveButton, hintButton,autoSolveButton, menuButton)) { // 将提示按钮添加到列表中
             b.setFocusTraversable(false);
         }
-
         /* ---------- 创建场景并注册键盘事件 ---------- */
-        Scene scene = new Scene(root, 600, 700);
+        Scene scene = new Scene(root, 650, 600);
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         // 事件过滤器：始终能收到键盘（不受焦点限制）
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
@@ -530,11 +512,10 @@ public class KlotskiApp extends Application {
                 case Z     -> { if (e.isControlDown()) undo(); }
                 case S     -> { if (e.isControlDown()) saveGame(); }
                 case H     -> { if (e.isControlDown()) getAndApplyHint(); } // Ctrl+H 触发提示
-                case A     -> { if (e.isControlDown()) toggleAutoSolve(); } // Ctrl+A 触发自动求解
+                case A     -> { if (e.isControlDown()) autoSolver.toggleAutoSolve(); } // Ctrl+A 触发自动求解
                 case ESCAPE -> showMainMenu();
             }
         });
-
         // ---------- 设置场景并抢焦点 ----------
         primaryStage.setScene(scene);
 
@@ -542,8 +523,6 @@ public class KlotskiApp extends Application {
         root.setOnMouseClicked(ev -> root.requestFocus()); // 鼠标点击后再夺回焦点
 
     }
-
-
     // Victory scene
     private void showVictoryScene() {
         stopTimer();
@@ -582,7 +561,6 @@ public class KlotskiApp extends Application {
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         primaryStage.setScene(scene);
     }
-
     // Update the game board display
     private void updateBoard() {
         // Ensure boardGrid is not null before accessing its children
@@ -602,29 +580,38 @@ public class KlotskiApp extends Application {
                 boardGrid.add(cell, col, row);
             }
         }
-
-        // Add blocks
         for (Block block : board.getBlocks()) {
             Rectangle rect = new Rectangle(
-                    70 * block.getWidth() - 4,
-                    70 * block.getHeight() - 4
+                    70 * block.getWidth() + 2, // 物块矩形的宽度
+                    70 * block.getHeight()     // 物块矩形的高度
             );
-
-            // Convert color string back to Color for UI
-            // Ensure model.Block has getColorString() and javafx.scene.paint.Color is imported
             rect.setFill(javafx.scene.paint.Color.valueOf(block.getColorString()));
-            rect.setStroke(javafx.scene.paint.Color.BLACK);
-            rect.setStrokeWidth(2);
-
-            // Make blocks interactive
+            rect.setStroke(javafx.scene.paint.Color.BLACK); // 默认边框颜色
+            rect.setStrokeWidth(2);                         // 默认边框宽度
+            // 这是关键步骤，用于之后从Rectangle中识别出具体的Block对象
+            rect.setUserData(block);
             rect.setOnMouseClicked(e -> {
-                // 游戏胜利后禁用块选择
-                if (gameLogic.isGameWon()|| isAutoSolving) return;
-                selectedBlock = block;
+                // 游戏胜利后或自动演示时禁用块选择
+                if (gameLogic.isGameWon() || isAutoSolving) {
+                    return;
+                }
+
+                // 从被点击的 Rectangle 的 userData 中获取其对应的 Block 模型实例
+                Block clickedModelBlock = (Block) ((Rectangle) e.getSource()).getUserData();
+
+                // 更新 selectedBlock 的引用
+                // 如果用户再次点击当前已经选中的物块，则取消选中 (实现切换选中/取消选中效果)
+                if (this.selectedBlock == clickedModelBlock) {
+                    this.selectedBlock = null; // 取消选中
+                } else {
+                    this.selectedBlock = clickedModelBlock; // 选中新的物块
+                }
+
+                // 调用方法来更新所有物块的高亮状态
                 updateSelectedBlockHighlight();
             });
 
-            // Add block to grid
+            // 将物块矩形添加到 GridPane 中的正确位置
             GridPane.setColumnIndex(rect, block.getX());
             GridPane.setRowIndex(rect, block.getY());
             GridPane.setColumnSpan(rect, block.getWidth());
@@ -632,56 +619,130 @@ public class KlotskiApp extends Application {
 
             boardGrid.getChildren().add(rect);
         }
-
-        // Update move count label
-        moveCountLabel.setText("Moves: " + board.getMoveCount());
-
-        // Highlight the selected block
         updateSelectedBlockHighlight();
     }
-
-    // Highlight the selected block
-    /** 高亮当前选中方块，若未选中则撤销高亮 */
     private void updateSelectedBlockHighlight() {
-
-        /* --- 1. 防御式判空 --- */
-        if (boardGrid == null) return;
-
-        /* --- 2. 先清除旧高亮（仍按宽高≠70 判断是棋子而非空格） --- */
         for (Node node : boardGrid.getChildren()) {
-            if (node instanceof Rectangle rect) {
-                if (rect.getWidth() > 0 && rect.getHeight() > 0
-                        && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
-                    rect.setStroke(Color.BLACK);
-                    rect.setStrokeWidth(2);
+            if (node instanceof Rectangle) {
+                Rectangle rectNode = (Rectangle) node;
+                // 从 Rectangle 的 userData 中获取其对应的 Block 模型
+                Block modelOfThisRect = (Block) rectNode.getUserData();
+
+                if (modelOfThisRect != null && modelOfThisRect == this.selectedBlock) {
+
+                    javafx.scene.effect.DropShadow borderGlow = new javafx.scene.effect.DropShadow();
+                    borderGlow.setColor(javafx.scene.paint.Color.GOLD); // 高亮颜色
+                    borderGlow.setRadius(12);      // 光晕半径
+                    borderGlow.setSpread(0.8);     // 光晕扩散度
+                    rectNode.setEffect(borderGlow);
+
+                } else {
+                    rectNode.setEffect(null); // 移除所有效果
+                    rectNode.setStroke(javafx.scene.paint.Color.BLACK); // 恢复默认边框颜色
+                    rectNode.setStrokeWidth(2);      // 恢复默认边框宽度
                 }
             }
         }
 
-        /* --- 3. 为新选中方块加高亮 --- */
-        if (selectedBlock == null) return;
 
-        for (Node node : boardGrid.getChildren()) {
-            if (!(node instanceof Rectangle rect)) continue;
 
-            /* 3-1. 取得网格位置信息（空值默认 0 / 1） */
-            int col   = GridPane.getColumnIndex(rect) == null ? 0 : GridPane.getColumnIndex(rect);
-            int row   = GridPane.getRowIndex (rect) == null ? 0 : GridPane.getRowIndex (rect);
-            int spanX = GridPane.getColumnSpan(rect) == null ? 1 : GridPane.getColumnSpan(rect);
-            int spanY = GridPane.getRowSpan   (rect) == null ? 1 : GridPane.getRowSpan   (rect);
 
-            /* 3-2. 判断该 Rectangle 是否对应 selectedBlock */
-            if (selectedBlock.getX() == col && selectedBlock.getY() == row
-                    && selectedBlock.getWidth()  == spanX
-                    && selectedBlock.getHeight() == spanY) {
 
-                rect.setStroke(Color.WHITE);
-                rect.setStrokeWidth(3);
-                break;                      // 找到即可退出循环
-            }
-        }
+
+
+
+
+
+
+
+
+
+
+
+
+
+//        // Add blocks
+//        for (Block block : board.getBlocks()) {
+//            Rectangle rect = new Rectangle(
+//                    70 * block.getWidth()+2 ,
+//                    70 * block.getHeight()
+//            );
+//            rect.setFill(javafx.scene.paint.Color.valueOf(block.getColorString()));
+//            rect.setStroke(javafx.scene.paint.Color.BLACK);
+//            rect.setStrokeWidth(2);
+//
+//            rect.setUserData(block);
+//
+//            // Make blocks interactive
+//            rect.setOnMouseClicked(e -> {
+//                // 游戏胜利后禁用块选择
+//                if (gameLogic.isGameWon()|| isAutoSolving) return;
+//                Block clickedModelBlock = (Block) ((Rectangle) e.getSource()).getUserData();
+//                if (this.selectedBlock == clickedModelBlock) {
+//                    this.selectedBlock = null; // 取消选中
+//                } else {
+//                    this.selectedBlock = clickedModelBlock; // 选中新的物块
+//                }
+//                updateSelectedBlockHighlight();
+//            });
+//
+//            // Add block to grid
+//            GridPane.setColumnIndex(rect, block.getX());
+//            GridPane.setRowIndex(rect, block.getY());
+//            GridPane.setColumnSpan(rect, block.getWidth());
+//            GridPane.setRowSpan(rect, block.getHeight());
+//
+//            boardGrid.getChildren().add(rect);
+//        }
+//
+//        // Update move count label
+//        moveCountLabel.setText("Moves: " + board.getMoveCount());
+//
+//        // Highlight the selected block
+//        updateSelectedBlockHighlight();
+//    }
+//    // Highlight the selected block
+//    private void updateSelectedBlockHighlight() {
+//        if (boardGrid == null) return;
+//        // Clear old highlights and apply type-specific colors
+//        for (Node node : boardGrid.getChildren()) {
+//            if (node instanceof Rectangle rect && isBlock(rect)) {
+//                if (rect.getWidth() > 0 && rect.getHeight() > 0
+//                        && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
+//                rect.setStroke(Color.BLACK);
+//                rect.setStrokeWidth(2);
+//                rect.setEffect(null);
+//                }
+//            }
+//        }
+//        // Highlight selected block
+//        if (selectedBlock == null) return;
+//        for (Node node : boardGrid.getChildren()) {
+//            if (!(node instanceof Rectangle rect)) continue;
+//            int col = GridPane.getColumnIndex(rect) == null ? 0 : GridPane.getColumnIndex(rect);
+//            int row = GridPane.getRowIndex(rect) == null ? 0 : GridPane.getRowIndex(rect);
+//            int spanX = GridPane.getColumnSpan(rect) == null ? 1 : GridPane.getColumnSpan(rect);
+//            int spanY = GridPane.getRowSpan(rect) == null ? 1 : GridPane.getRowSpan(rect);
+//
+//            if (selectedBlock.getX() == col && selectedBlock.getY() == row
+//                    && selectedBlock.getWidth() == spanX
+//                    && selectedBlock.getHeight() == spanY) {
+//                // Create bright glow effect
+//                DropShadow glow = new DropShadow();
+//                glow.setColor(Color.GOLD);
+//                glow.setRadius(10);
+//                glow.setSpread(0.8);
+//                rect.setEffect(glow);
+//                // Set distinctive border
+//                rect.setStroke(Color.YELLOW);
+//                rect.setStrokeWidth(4);
+//                rect.setStroke(Color.YELLOW);
+//                rect.setStrokeWidth(4);
+//                rect.getStrokeDashArray().clear();
+//                break;
+//            }
+//        }
     }
-
     // Move the selected block
     private void moveSelected(Direction direction) {
         // 游戏胜利后禁用移动
@@ -727,8 +788,7 @@ public class KlotskiApp extends Application {
             */
         }
     }
-
-    // KlotskiApp.java -> undo() 方法
+    // undo() 方法
     private void undo() {
         System.out.println("[APP_UNDO] Undo button clicked. isAutoSolving: " + isAutoSolving);
         if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) {
@@ -772,13 +832,10 @@ public class KlotskiApp extends Application {
             showAlert("Undo Error", "Game logic not available.");
         }
     }
-
-
-
     // Start a new game with a specific level - Modified to accept levelNumber
     private void startNewGame(int levelNumber) {
         model.Level level = levelManager.getLevel(levelNumber);
-
+        this.selectedBlock = null;
         if (level != null) {
             /* ---------- 创建棋盘并应用布局 ---------- */
             Board newBoard = new Board();
@@ -826,14 +883,12 @@ public class KlotskiApp extends Application {
             showAlert("Error", "Could not load level " + levelNumber);
         }
     }
-
-
     // Load a saved game
     private void loadGame(GameState state) {
         // Restore the game state using the loaded GameState object
         // Do NOT create a new GameLogic() here if you want to update the current one.
         // Assuming gameLogic field in KlotskiApp is the instance to update:
-
+        this.selectedBlock = null;
         // Ensure gameLogic is not null before setting its state
         if (gameLogic == null) {
             gameLogic = new GameLogic(); // Should be initialized in start, but as a fallback
@@ -885,7 +940,6 @@ public class KlotskiApp extends Application {
             });
         }
     }
-
     // Save the current game
     private void saveGame() {
         if (userManager.isGuest()) {
@@ -920,10 +974,7 @@ public class KlotskiApp extends Application {
             showAlert("Save Error", "Failed to save game.");
         }
     }
-
-    /**
-     * 获取并应用提示（下一步）
-     */
+    //Hint
     private void getAndApplyHint() {
         // 如果游戏已胜利或求解器正在运行，则不执行
         if (gameLogic.isGameWon() || (solverProgress != null && solverProgress.isVisible()) || isAutoSolving) {
@@ -996,137 +1047,6 @@ public class KlotskiApp extends Application {
         // 启动任务
         new Thread(solverTask).start();
     }
-
-
-// Auto-solve functionality
-    private void toggleAutoSolve() {
-        if (isAutoSolving) {
-            stopAutoSolving();
-        } else {
-            if (gameLogic == null || gameLogic.getBoard() == null) {
-                showAlert("Auto-Solve", "Please start or load a game first.");
-                return;
-            }
-            if (gameLogic.isGameWon()) {
-                showAlert("Auto-Solve", "The game is already won!");
-                return;
-            }
-            startAutoSolving();
-        }
-    }
-
-    private void startAutoSolving() {
-        isAutoSolving = true;
-        autoSolveButton.setText("Stop");
-        if (hintButton != null) { // Ensure hintButton is initialized
-            hintButton.setDisable(true);
-        }
-        // Further disabling of other game controls (like directional buttons) can be added here
-        // by making them class members and calling setDisable(true).
-        // For now, interaction points will check 'isAutoSolving'.
-
-        if (solverProgress != null) { // Ensure solverProgress is initialized
-            solverProgress.setVisible(true);
-        }
-
-        performAutoSolveStep(); // Start the first step
-    }
-
-    private void stopAutoSolving() {
-        isAutoSolving = false;
-        if (autoSolveButton != null) { // Ensure button is initialized
-            autoSolveButton.setText("Auto-Solve");
-        }
-        if (hintButton != null && gameLogic != null) { // Ensure buttons & gameLogic are initialized
-            hintButton.setDisable(gameLogic.isGameWon());
-        }
-        // Re-enable other game controls if they were disabled.
-
-        if (solverProgress != null) { // Ensure solverProgress is initialized
-            solverProgress.setVisible(false);
-        }
-    }
-
-    private void performAutoSolveStep() {
-        if (!isAutoSolving || gameLogic.isGameWon()) {
-            if (isAutoSolving && gameLogic != null && !gameLogic.isGameWon()) {
-                // Only show this if auto-solving was active and did not result in a win (e.g. stopped manually, or no more hints)
-            }
-            stopAutoSolving(); // Ensure controls are reset and flag is false
-            return;
-        }
-
-        // Ensure solverProgress is visible during the step finding
-        if (solverProgress != null) solverProgress.setVisible(true);
-
-
-        Task<Board> solverTask = new Task<Board>() {
-            @Override
-            protected Board call() throws Exception {
-                if (gameLogic == null) return null; // Should not happen if start checks gameLogic
-                return gameLogic.getHint(); // This is the core call
-            }
-        };
-
-        solverTask.setOnSucceeded(event -> {
-            Board nextBoard = solverTask.getValue();
-
-            if (!isAutoSolving) { // Check if stopped while task was running
-                stopAutoSolving();
-                return;
-            }
-
-            if (nextBoard != null) {
-                gameLogic.setBoard(nextBoard.copy()); // Apply the hint
-
-                Deque<Board> currentHistory = gameLogic.getMoveHistory();
-                if (currentHistory == null) currentHistory = new ArrayDeque<>();
-                currentHistory.push(gameLogic.getBoard().copy());
-                gameLogic.setMoveHistory(currentHistory);
-
-                updateBoard(); // Refreshes UI and moveCountLabel
-
-                if (!userManager.isGuest()) {
-                    GameState gs = new GameState(
-                            gameLogic.getBoard().copy(),
-                            userManager.getCurrentUser().getUsername(),
-                            currentLevel,
-                            new ArrayDeque<>(gameLogic.getMoveHistory()),
-                            gameLogic.isGameWon());
-                    gs.setTimeElapsed(System.currentTimeMillis() - startTime); // elapsedTime is updated by timer
-                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gs);
-                }
-
-                if (gameLogic.isGameWon()) {
-                    showVictoryScene(); // This should also stop the game timer
-                    stopAutoSolving();  // Finalize auto-solve state
-                } else if (isAutoSolving) { // Check flag again before scheduling next step
-                    PauseTransition pause = new PauseTransition(Duration.seconds(AUTO_SOLVE_STEP_DELAY_SECONDS));
-                    pause.setOnFinished(e -> performAutoSolveStep());
-                    pause.play();
-                }
-            } else { // No next hint found
-                stopAutoSolving();
-                if (gameLogic != null && !gameLogic.isGameWon()) {
-                    showAlert("Auto-Solve", "No further hints available or the puzzle is unsolvable from this state.");
-                }
-            }
-        });
-
-        solverTask.setOnFailed(event -> {
-            if (!isAutoSolving && solverTask.getException() instanceof InterruptedException) {
-                // Task might be interrupted if thread is shut down, common on app close.
-                System.out.println("Auto-solve task interrupted, possibly due to application shutdown.");
-            } else {
-                showAlert("Auto-Solve Error", "Solver failed: " + event.getSource().getException().getMessage());
-                event.getSource().getException().printStackTrace();
-            }
-            stopAutoSolving(); // Ensure cleanup even on failure
-        });
-
-        new Thread(solverTask).start();
-    }
-
     // Initialize the game file manager
     @Override
     public void stop() {
@@ -1149,7 +1069,6 @@ public class KlotskiApp extends Application {
         timer.setCycleCount(Timeline.INDEFINITE);
         timer.play();
     }
-
     // Stop the game timer
     private void stopTimer() {
         if (timer != null) {
@@ -1157,14 +1076,12 @@ public class KlotskiApp extends Application {
             // elapsedTime is already updated in the timer's keyframe or when stopTimer is called elsewhere
         }
     }
-
     // Format time as mm:ss
     private String formatTime(long millis) {
         int seconds = (int) (millis / 1000) % 60;
         int minutes = (int) (millis / 60000);
         return String.format("%02d:%02d", minutes, seconds);
     }
-
     // Show an alert dialog
     private void showAlert(String title, String message) {
         // 确保在 JavaFX Application 线程中显示 Alert
@@ -1176,7 +1093,6 @@ public class KlotskiApp extends Application {
             alert.showAndWait();
         });
     }
-
     // Main method
     public static void main(String[] args) {
         launch(args);

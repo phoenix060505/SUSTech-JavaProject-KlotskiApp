@@ -119,15 +119,7 @@ public class GameLogic {
         }
 
         if (blockToMove == null) {
-            // 如果没有通过 equals 找到（例如，如果 blockFromUI 是一个旧的引用），
-            // 可以尝试通过位置查找，但这可能不总是准确，如果多个块可以占据同一位置（虽然华容道不会）
-            // 或者如果 blockFromUI 的属性与 board 中的任何块都不匹配。
-            // 为简单起见，如果 equals 找不到，我们可能需要重新评估 blockFromUI 的来源。
-            // 但通常，KlotskiApp 中的 selectedBlock 应该引用的是当前 board 中的对象。
-            // 如果 KlotskiApp 中的 selectedBlock 在 board 更新后没有正确更新，这里就会出问题。
-            // 暂时假设 blockFromUI 是有效的或与 board 中的某个块 equals。
-            // 如果严格，找不到就应该返回 false。
-            // System.err.println("Warning: blockFromUI not found in current board's blocks via equals.");
+            System.err.println("Warning: blockFromUI not found in current board's blocks via equals.");
             blockToMove = blockFromUI; // 退回到使用传入的引用，但这可能不安全
         }
 
