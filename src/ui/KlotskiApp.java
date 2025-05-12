@@ -34,7 +34,6 @@ import ui.controls.WavePasswordField;
 import java.util.*;
 
 import static game.AboutGame.applyFadeTransition;
-
 public class KlotskiApp extends Application {
     // Game components
     private GameLogic gameLogic;
@@ -46,6 +45,8 @@ public class KlotskiApp extends Application {
     private long elapsedTime;
     private Timeline timer;
     private int currentLevel = 1;
+    //Restart
+    private Button restartButton; // 添加重启按钮字段
     //Hint
     private LevelManager levelManager; // Add LevelManager field
     private Button hintButton; // 添加提示按钮字段
@@ -61,7 +62,8 @@ public class KlotskiApp extends Application {
     private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.001;
     //AboutGame
     private final AboutGame aboutGame = new AboutGame();
-
+    private StackPane rootContainer;
+    private Scene mainScene;
     @Override
     public void start(Stage primaryStage) {
         this.primaryStage = primaryStage;
@@ -82,8 +84,7 @@ public class KlotskiApp extends Application {
             }
         });
     }
-    private StackPane rootContainer; // 用于动画的根容器
-    private Scene mainScene;         // 保持场景引用
+
     // Login scene
     private void showLoginScene() {
     //HBox hBox = new HBox();
@@ -454,7 +455,7 @@ public class KlotskiApp extends Application {
         Button menuButton  = new Button("Menu");
         hintButton = new Button("Hint");// 初始化提示按钮
         autoSolveButton = new Button("Auto-Solve");//初始化自动求解按钮
-
+        restartButton = new Button("Restart");
         solverProgress = new ProgressIndicator(-1); // 初始化进度指示器
         solverProgress.setVisible(false); // 默认隐藏
         saveButton.setDisable(userManager.isGuest());
@@ -480,6 +481,12 @@ public class KlotskiApp extends Application {
         autoSolveButton.setOnAction(e -> autoSolver.toggleAutoSolve()); // Assign action
         undoButton.setOnAction(e  -> undo());
         saveButton.setOnAction(e  -> saveGame());
+        restartButton.setOnAction(e -> {
+            if (gameLogic != null) {
+                gameLogic.restartGame();
+                updateBoard();
+            }
+        });
         menuButton.setOnAction(e  -> {
             if (autoSolver != null && autoSolver.isAutoSolving()) {
                 autoSolver.toggleAutoSolve(); // 停止自动求解
@@ -490,12 +497,12 @@ public class KlotskiApp extends Application {
 
         controlPanel.getChildren().addAll(
                 upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, hintButton,autoSolveButton, menuButton, solverProgress); // 添加提示按钮和进度指示器
+                undoButton, saveButton, hintButton,autoSolveButton, restartButton ,menuButton, solverProgress); // 添加提示按钮和进度指示器
         root.setBottom(controlPanel);
 
         /* ---------- 防止按钮抢键盘 ---------- */
         for (Button b : List.of(upButton, downButton, leftButton, rightButton,
-                undoButton, saveButton, hintButton,autoSolveButton, menuButton)) { // 将提示按钮添加到列表中
+                undoButton, saveButton, hintButton,autoSolveButton,restartButton, menuButton)) { // 将提示按钮添加到列表中
             b.setFocusTraversable(false);
         }
         /* ---------- 创建场景并注册键盘事件 ---------- */
@@ -513,6 +520,7 @@ public class KlotskiApp extends Application {
                 case S     -> { if (e.isControlDown()) saveGame(); }
                 case H     -> { if (e.isControlDown()) getAndApplyHint(); } // Ctrl+H 触发提示
                 case A     -> { if (e.isControlDown()) autoSolver.toggleAutoSolve(); } // Ctrl+A 触发自动求解
+                case R     -> { if (e.isControlDown()) restartButton.fire(); } // Ctrl+R 触发重启
                 case ESCAPE -> showMainMenu();
             }
         });

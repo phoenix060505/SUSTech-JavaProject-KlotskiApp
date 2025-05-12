@@ -192,4 +192,11 @@ public class GameLogic {
         if (solutionPath != null && solutionPath.size() > 1) return solutionPath.get(1);
         return null;
     }
+
+    public void restartGame() {
+        if (board != null) {
+            board.resetMoveCount();
+            initializeGame();
+        }
+    }
 }
