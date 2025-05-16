@@ -32,6 +32,7 @@ import util.GameFileManager;
 import ui.controls.WaveTextField;
 import ui.controls.WavePasswordField;
 import java.util.*;
+import javafx.animation.TranslateTransition;
 
 import static game.AboutGame.applyFadeTransition;
 public class KlotskiApp extends Application {
@@ -506,7 +507,7 @@ public class KlotskiApp extends Application {
             b.setFocusTraversable(false);
         }
         /* ---------- 创建场景并注册键盘事件 ---------- */
-        Scene scene = new Scene(root, 650, 600);
+        Scene scene = new Scene(root, 700, 600);
         scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
         // 事件过滤器：始终能收到键盘（不受焦点限制）
         scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
@@ -590,8 +591,8 @@ public class KlotskiApp extends Application {
         }
         for (Block block : board.getBlocks()) {
             Rectangle rect = new Rectangle(
-                    70 * block.getWidth() + 2, // 物块矩形的宽度
-                    70 * block.getHeight()     // 物块矩形的高度
+                    73 * block.getWidth(), // 物块矩形的宽度
+                    73 * block.getHeight()     // 物块矩形的高度
             );
             rect.setFill(javafx.scene.paint.Color.valueOf(block.getColorString()));
             rect.setStroke(javafx.scene.paint.Color.BLACK); // 默认边框颜色
@@ -753,47 +754,108 @@ public class KlotskiApp extends Application {
     }
     // Move the selected block
     private void moveSelected(Direction direction) {
-        // 游戏胜利后禁用移动
-        if (gameLogic != null && (gameLogic.isGameWon()|| isAutoSolving)) return;
+        // 游戏胜利后或自动演示时禁用移动
+        if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) {
+            return;
+        }
 
+        if (selectedBlock != null && gameLogic != null) {
+            // 记录移动前选定块的逻辑位置，用于计算动画的相对位移
+            int oldGridX = selectedBlock.getX();
+            int oldGridY = selectedBlock.getY();
 
-        if (selectedBlock != null && gameLogic != null) { // Add null check for gameLogic
+            // 尝试在游戏逻辑中移动块
             if (gameLogic.moveBlock(selectedBlock, direction)) {
-                updateBoard();
+                // 移动成功后，selectedBlock 的 x, y 已经是新位置
 
-                if (gameLogic.isGameWon()) {
-                    showVictoryScene();
+                // 查找与 selectedBlock 对应的 Rectangle 节点以进行动画
+                Rectangle blockRectangleToAnimate = (Rectangle) boardGrid.getChildren().stream().filter(node -> node.getUserData() == selectedBlock && node instanceof Rectangle).findFirst().orElse(null);
+                // 通过比较 UserData 来找到对应的 Rectangle
+
+                if (blockRectangleToAnimate != null) {
+                    // 计算动画需要平移的像素距离
+                    // 假设每个格子的宽度和高度为 70 像素 (与 updateBoard 中的设置一致)
+                    double cellWidth = 70.0;
+                    double cellHeight = 70.0;
+
+                    // 计算X和Y方向上的目标平移量
+                    // blockRectangleToAnimate 的当前视觉位置是基于 oldGridX, oldGridY
+                    // selectedBlock.getX() 和 selectedBlock.getY() 是移动后的新逻辑位置
+                    double targetTranslateX = (selectedBlock.getX() - oldGridX) * cellWidth;
+                    double targetTranslateY = (selectedBlock.getY() - oldGridY) * cellHeight;
+
+                    // 创建平移动画
+                    TranslateTransition tt = new TranslateTransition(Duration.millis(200), blockRectangleToAnimate); // 动画持续200毫秒
+                    tt.setByX(targetTranslateX); // 设置X方向的相对平移量
+                    tt.setByY(targetTranslateY); // 设置Y方向的相对平移量
+                    tt.setCycleCount(1);        // 动画只播放一次
+                    tt.setAutoReverse(false);   // 不自动反向播放
+
+                    // 动画播放完毕后的操作
+                    tt.setOnFinished(event -> {
+                        // 动画完成后，重置Rectangle的translate属性，因为它已经被TranslateTransition修改了
+                        // 这样可以避免影响下一次布局或动画
+                        blockRectangleToAnimate.setTranslateX(0);
+                        blockRectangleToAnimate.setTranslateY(0);
+
+                        // 现在可以安全地更新整个棋盘的UI了
+                        // updateBoard() 会根据新的逻辑位置重新绘制所有块
+                        updateBoard();
+
+                        // 检查游戏是否胜利
+                        if (gameLogic.isGameWon()) {
+                            showVictoryScene();
+                        }
+
+                        // 如果用户不是游客，则自动保存游戏
+                        if (!userManager.isGuest()) {
+                            GameState gs = new GameState(
+                                    gameLogic.getBoard(),
+                                    userManager.getCurrentUser().getUsername(),
+                                    currentLevel,
+                                    gameLogic.getMoveHistory(),
+                                    gameLogic.isGameWon());
+                            gs.setTimeElapsed(System.currentTimeMillis() - startTime);
+                            gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gs);
+                        }
+
+                        // 更新移动步数标签
+                        moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+                    });
+
+                    // 播放动画
+                    tt.play();
+
+                } else {
+                    // 如果由于某种原因没有找到对应的Rectangle (理论上不应该发生)
+                    // 则回退到立即更新棋盘，没有动画
+                    updateBoard();
+                    if (gameLogic.isGameWon()) {
+                        showVictoryScene();
+                    }
+                    if (!userManager.isGuest()) {
+                        GameState gs = new GameState(
+                                gameLogic.getBoard(),
+                                userManager.getCurrentUser().getUsername(),
+                                currentLevel,
+                                gameLogic.getMoveHistory(),
+                                gameLogic.isGameWon());
+                        gs.setTimeElapsed(System.currentTimeMillis() - startTime);
+                        gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), gs);
+                    }
+                    moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
                 }
-                // Auto-save only if user is logged in
-                if (!userManager.isGuest()) {
-                    GameState gs=new GameState(
-                            gameLogic.getBoard(),
-                            userManager.getCurrentUser().getUsername(),
-                            currentLevel,
-                            gameLogic.getMoveHistory(),
-                            gameLogic.isGameWon());
-                    gs.setTimeElapsed(System.currentTimeMillis()-startTime);
-                    gameFileManager.saveGame(userManager.getCurrentUser().getUsername(),gs);
-                }
-
-
-                // Update move count display after a successful move
-                moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
             }
-        } else if (gameLogic != null && gameLogic.getBoard() != null) { // Add null checks
-            // If no block is selected, try to find one at the center
-            // This part might be less intuitive, consider removing or improving block selection
-            /*
-            Block centerBlock = gameLogic.getBoard().getBlockAt(
-                    gameLogic.getBoard().getCols() / 2,
-                    gameLogic.getBoard().getRows() / 2
-            );
-
-            if (centerBlock != null) {
-                selectedBlock = centerBlock;
-                updateSelectedBlockHighlight();
-            }
-            */
+        } else if (gameLogic != null && gameLogic.getBoard() != null) {
+            // 如果没有块被选中 (这部分逻辑保持不变)
+            // Block centerBlock = gameLogic.getBoard().getBlockAt(
+            // gameLogic.getBoard().getCols() / 2,
+            // gameLogic.getBoard().getRows() / 2
+            // );
+            // if (centerBlock != null) {
+            // selectedBlock = centerBlock;
+            // updateSelectedBlockHighlight();
+            // }
         }
     }
     // undo() 方法

@@ -1,82 +1,173 @@
 package ui.controls;
 
+import javafx.animation.Interpolator;
+import javafx.animation.KeyFrame;
+import javafx.animation.KeyValue;
+import javafx.animation.Timeline;
 import javafx.animation.TranslateTransition;
 import javafx.geometry.Pos;
-import javafx.scene.control.PasswordField;
+import javafx.scene.Node; // 需要导入 Node
+import javafx.scene.control.PasswordField; // 类型为 PasswordField
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.text.Text;
 import javafx.util.Duration;
 
-/** 带浮动标签的密码框 */
+/** 带浮动标签的密码确认框 (标签字符逐个动画) */
 public class WavePasswordConfirm extends StackPane {
 
-    private final PasswordField input;
+    private final PasswordField input; // 类型为 PasswordField
     private final HBox labelBox;
-    private final Rectangle leftBar, rightBar;
+    private final Pane barPane;
+    private final Rectangle centerBar;
+
+    private double controlPrefWidth;
+
+    // 动画常量
+    private static final Duration BAR_ANIMATION_DURATION = Duration.millis(300);
+    private static final Duration CHAR_ANIM_DURATION = Duration.millis(350);
+    private static final double CHAR_ANIM_DELAY_INCREMENT = 50; // ms
+    private static final double CHAR_TRANSLATE_Y_FOCUSED = -15;
+    private static final double CHAR_TRANSLATE_Y_BLURRED = 0;
+
+    private static final double LABEL_BOX_Y_BLURRED_INITIAL = 10;
+
+    private static final Color BAR_FOCUSED_COLOR = Color.web("#5264AE");
+    private static final Color BAR_DEFAULT_COLOR = Color.web("#5264AE");
+
 
     public WavePasswordConfirm(String label) {
+        this(label, 200.0);
+    }
 
-        /* 输入框 */
-        input = new PasswordField();
+    public WavePasswordConfirm(String label, double prefWidth) {
+        this.controlPrefWidth = prefWidth;
+
+        input = new PasswordField(); // 使用 PasswordField
         input.getStyleClass().add("wave-input");
-        input.setPrefWidth(200);
+        input.setPrefWidth(this.controlPrefWidth);
 
-        /* 标签 */
         labelBox = new HBox();
         labelBox.getStyleClass().add("wave-label");
         for (int i = 0; i < label.length(); i++) {
             Text t = new Text(String.valueOf(label.charAt(i)));
             t.getStyleClass().add("wave-label-char");
-            t.setStyle(String.format("-fx-transition-delay: %.2fs;", i * 0.05));
             labelBox.getChildren().add(t);
         }
         labelBox.setMouseTransparent(true);
 
-        /* 下划线 */
-        Pane barPane = new Pane();
+        barPane = new Pane();
         barPane.getStyleClass().add("wave-bar");
-        barPane.setPrefWidth(200);
+        barPane.setPrefWidth(this.controlPrefWidth);
         barPane.setMouseTransparent(true);
 
-        leftBar = new Rectangle(0, 2, Color.web("#5264AE"));
-        rightBar = new Rectangle(0, 2, Color.web("#5264AE"));
-        rightBar.setTranslateX(200);
-        rightBar.setScaleX(-1);
-        barPane.getChildren().addAll(leftBar, rightBar);
+        centerBar = new Rectangle(0, 2, BAR_DEFAULT_COLOR);
+        centerBar.setTranslateX(this.controlPrefWidth / 2);
+        barPane.getChildren().add(centerBar);
 
-        /* 布局 */
         getChildren().addAll(input, barPane, labelBox);
         StackPane.setAlignment(labelBox, Pos.TOP_LEFT);
         labelBox.setTranslateX(5);
-        labelBox.setTranslateY(10);
-        barPane.translateYProperty().bind(input.heightProperty().subtract(1));
+        labelBox.setTranslateY(LABEL_BOX_Y_BLURRED_INITIAL);
 
-        /* 动画 */
-        input.focusedProperty().addListener((o, ov, nv) -> {
-            if (nv) focusAnim();
-            else if (input.getText().isEmpty()) blurAnim();
+        barPane.translateYProperty().bind(input.heightProperty().subtract(centerBar.getHeight()));
+
+        input.focusedProperty().addListener((o, ov, foc) -> {
+            if (foc) {
+                focusAnim();
+            } else if (input.getText().isEmpty()) {
+                blurAnim();
+            } else {
+                subtleBlurAnim();
+            }
         });
     }
 
     private void focusAnim() {
-        TranslateTransition tt = new TranslateTransition(Duration.millis(200), labelBox);
-        tt.setToY(-20);
-        tt.play();
-        leftBar.setWidth(100);
-        rightBar.setWidth(100);
+        for (int i = 0; i < labelBox.getChildren().size(); i++) {
+            Node charNode = labelBox.getChildren().get(i);
+            TranslateTransition ttChar = new TranslateTransition(CHAR_ANIM_DURATION, charNode);
+            ttChar.setToY(CHAR_TRANSLATE_Y_FOCUSED);
+            ttChar.setDelay(Duration.millis(i * CHAR_ANIM_DELAY_INCREMENT));
+            ttChar.setInterpolator(Interpolator.EASE_OUT);
+            ttChar.play();
+        }
+
+        Timeline barTimeline = new Timeline();
+        KeyValue kvBarWidth = new KeyValue(centerBar.widthProperty(), this.controlPrefWidth, Interpolator.EASE_OUT);
+        KeyValue kvBarTranslateX = new KeyValue(centerBar.translateXProperty(), 0, Interpolator.EASE_OUT);
+        KeyValue kvBarFill = new KeyValue(centerBar.fillProperty(), BAR_FOCUSED_COLOR, Interpolator.EASE_BOTH);
+        KeyFrame kf = new KeyFrame(BAR_ANIMATION_DURATION, kvBarWidth, kvBarTranslateX, kvBarFill);
+        barTimeline.getKeyFrames().add(kf);
+        barTimeline.play();
     }
 
     private void blurAnim() {
-        TranslateTransition tt = new TranslateTransition(Duration.millis(200), labelBox);
-        tt.setToY(0);
-        tt.play();
-        leftBar.setWidth(0);
-        rightBar.setWidth(0);
+        for (int i = 0; i < labelBox.getChildren().size(); i++) {
+            Node charNode = labelBox.getChildren().get(i);
+            TranslateTransition ttChar = new TranslateTransition(CHAR_ANIM_DURATION, charNode);
+            ttChar.setToY(CHAR_TRANSLATE_Y_BLURRED);
+            ttChar.setDelay(Duration.millis(i * CHAR_ANIM_DELAY_INCREMENT));
+            ttChar.setInterpolator(Interpolator.EASE_IN);
+            ttChar.play();
+        }
+
+        Timeline barTimeline = new Timeline();
+        KeyValue kvBarWidth = new KeyValue(centerBar.widthProperty(), 0, Interpolator.EASE_IN);
+        KeyValue kvBarTranslateX = new KeyValue(centerBar.translateXProperty(), this.controlPrefWidth / 2, Interpolator.EASE_IN);
+        KeyValue kvBarFill = new KeyValue(centerBar.fillProperty(), BAR_DEFAULT_COLOR, Interpolator.EASE_BOTH);
+        KeyFrame kf = new KeyFrame(BAR_ANIMATION_DURATION, kvBarWidth, kvBarTranslateX, kvBarFill);
+        barTimeline.getKeyFrames().add(kf);
+        barTimeline.play();
     }
 
-    /* 代理 */
+    private void subtleBlurAnim() {
+        for (int i = 0; i < labelBox.getChildren().size(); i++) {
+            Node charNode = labelBox.getChildren().get(i);
+            if (charNode.getTranslateY() != CHAR_TRANSLATE_Y_FOCUSED) {
+                TranslateTransition ttChar = new TranslateTransition(Duration.millis(50), charNode);
+                ttChar.setToY(CHAR_TRANSLATE_Y_FOCUSED);
+                ttChar.setDelay(Duration.millis(i * CHAR_ANIM_DELAY_INCREMENT * 0.5));
+                ttChar.play();
+            }
+        }
+
+        Timeline barTimeline = new Timeline();
+        KeyValue kvBarWidth = new KeyValue(centerBar.widthProperty(), this.controlPrefWidth, Interpolator.EASE_OUT);
+        KeyValue kvBarTranslateX = new KeyValue(centerBar.translateXProperty(), 0, Interpolator.EASE_OUT);
+        KeyValue kvBarFill = new KeyValue(centerBar.fillProperty(), BAR_DEFAULT_COLOR, Interpolator.EASE_BOTH);
+        KeyFrame kf = new KeyFrame(BAR_ANIMATION_DURATION, kvBarWidth, kvBarTranslateX, kvBarFill);
+        barTimeline.getKeyFrames().add(kf);
+        barTimeline.play();
+    }
+
     public String getText() { return input.getText(); }
-    public void clear() { input.clear(); }
+
+    public void setText(String text) { // Added setText for consistency and better state handling
+        input.setText(text);
+        if (text == null || text.isEmpty()) {
+            if (!input.isFocused()) {
+                blurAnim();
+            }
+        } else {
+            if (!input.isFocused()) {
+                for (int i = 0; i < labelBox.getChildren().size(); i++) {
+                    Node charNode = labelBox.getChildren().get(i);
+                    charNode.setTranslateY(CHAR_TRANSLATE_Y_FOCUSED);
+                }
+                subtleBlurAnim();
+            }
+        }
+    }
+
+    public void clear() {
+        // input.clear(); // Original
+        // if (!input.isFocused() && input.getText().isEmpty()) { // Check if already empty to avoid redundant blur
+        //     blurAnim();
+        // }
+        setText(""); // Use setText to handle state updates correctly
+    }
+
+    public PasswordField getInputField() { return input; } // Renamed from getPasswordField for consistency
 }
