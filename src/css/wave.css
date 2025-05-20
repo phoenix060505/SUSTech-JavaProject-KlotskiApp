@@ -3,12 +3,10 @@
     -fx-background-color: transparent; /* 保持背景透明 */
     -fx-border-color: transparent;     /* 将边框颜色也设为透明，或者直接移除边框 */
     -fx-border-width: 0;               /* 移除所有边框，特别是底部的 */
-    /* 如果您希望顶部、左侧、右侧有边框，可以单独设置，但底部必须为0 */
-    /* 例如: -fx-border-width: 1 1 0 1; (上1 右1 下0 左1) */
-    /* 但对于这种底部由动态bar指示焦点的设计，通常输入框本身无边框或只有非冲突边框 */
 
-    -fx-padding: 10 10 10 5;         /* 内边距可以保持，确保文本不贴边，并且为下方的bar留出空间 */
-    /* 特别注意底部的padding (10px) 应该足够容纳您的动画bar的高度 (2px) 和一些间隙 */
+
+    -fx-padding: 10 10 10 5;     /* 内边距可以保持，确保文本不贴边，并且为下方的bar留出空间 */
+    /* 特别注意底部的padding (10px)*/
     -fx-font-size: 16px;
 }
 .wave-label {

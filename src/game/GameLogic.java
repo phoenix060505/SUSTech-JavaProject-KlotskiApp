@@ -2,6 +2,8 @@
 package game;
 import model.Block;
 import model.Board;
+
+import java.awt.*;
 import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.List;
@@ -189,6 +191,8 @@ public class GameLogic {
         if (isGameWon()) return null;
         if (board == null) return null;
         List<Board> solutionPath = solver.solve(board.copy());
+        Label moveCountLabel = new Label();
+        moveCountLabel.setText("Moves: " + getBoard().getMoveCount()); // 更新步数显示
         if (solutionPath != null && solutionPath.size() > 1) return solutionPath.get(1);
         return null;
     }
@@ -196,6 +200,7 @@ public class GameLogic {
     public void restartGame() {
         if (board != null) {
             board.resetMoveCount();
+
             initializeGame();
         }
     }

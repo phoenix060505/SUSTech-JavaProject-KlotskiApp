@@ -7,6 +7,7 @@ import javafx.scene.control.Button;
 import javafx.scene.control.ProgressIndicator;
 import javafx.util.Duration;
 
+import java.awt.*;
 import java.util.ArrayDeque;
 import java.util.Deque;
 import java.util.function.BiConsumer;
@@ -14,7 +15,7 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 public class AutoSolve {
-    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.001;
+    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.1;
     private boolean isAutoSolving = false;
     private GameLogic gameLogic;
     private Button autoSolveButton;
@@ -58,6 +59,7 @@ public class AutoSolve {
                 return;
             }
             startAutoSolving();
+
         }
     }
 
@@ -119,7 +121,6 @@ public class AutoSolve {
                 if (currentHistory == null) currentHistory = new ArrayDeque<>();
                 currentHistory.push(gameLogic.getBoard().copy());
                 gameLogic.setMoveHistory(currentHistory);
-
                 onUpdateBoard.run();
 
                 if (gameLogic.isGameWon()) {
@@ -155,5 +156,9 @@ public class AutoSolve {
 
     public boolean isAutoSolving() {
         return isAutoSolving;
+    }
+
+    public LongSupplier getGetElapsedTime() {
+        return getElapsedTime;
     }
 }

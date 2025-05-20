@@ -8,11 +8,13 @@ import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.concurrent.Task; // 导入 Task
 import javafx.scene.Node;
+import javafx.scene.effect.DropShadow;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.text.FontPosture;
 import model.Block;
 import model.Board;
 import model.GameState;
+import model.Level;
 import ui.controls.WavePasswordConfirm;
 import user.UserManager;
 import javafx.application.Application;
@@ -370,16 +372,13 @@ public class KlotskiApp extends Application {
         // --- Level Selection UI ---
         Label levelLabel = new Label("Select Level:");
         ComboBox<String> levelComboBox = new ComboBox<>();
-        // Assuming LevelManager has a method to get level names, e.g., getLevelNames()
-        // For now, let's add some placeholder level names based on your LevelManager snippet
-        // Get level names from LevelManager
         List<String> levelNames = new ArrayList<>();
         for (int i = 1; i <= levelManager.getLevelCount(); i++) {
             levelNames.add(levelManager.getLevel(i).getName());
         }
         levelComboBox.getItems().addAll(levelNames); // Add your actual level names
         levelComboBox.getSelectionModel().selectFirst(); // Select the first level by default
-        // --- End Level Selection UI ---
+
 
 
         newGameButton.setOnAction(e -> {
@@ -391,14 +390,34 @@ public class KlotskiApp extends Application {
             showGameScene(); // <-- 先调用 showGameScene 初始化 UI
             startNewGame(levelNumber); // <-- 再调用 startNewGame 进行游戏逻辑初始化和UI更新
         });
-
         loadGameButton.setOnAction(e -> {
-            GameState state = userManager.loadGameForCurrentUser();
+            if (userManager.isGuest()) {
+                showAlert("Load Error", "Guests cannot load games. Please log in or register.");
+                return;
+            }
+            if (userManager.getCurrentUser() == null) {
+                showAlert("Load Error", "No user logged in.");
+                return;
+            }
+            if (gameFileManager == null) {
+                showAlert("Load Error", "File manager not available.");
+                return;
+            }
+
+            GameState state = gameFileManager.loadGame(userManager.getCurrentUser().getUsername());
+
             if (state != null) {
-                showGameScene(); // <-- 先调用 showGameScene 初始化 UI
-                loadGame(state); // <-- 再调用 loadGame 加载状态并更新 UI
+                System.out.println("[MAIN_MENU_LOAD_ACTION] Loaded state.isGameWon(): " + state.isGameWon()); // DEBUG
+                if (state.isGameWon()) {
+                    showAlert("Load Error", "You are already winning the game.");
+                    // Optionally, you might want to stop any ongoing game logic or timers here if any were active
+                    // stopTimer(); // Good practice if a timer could be running from another context
+                } else {
+                    showGameScene();
+                    loadGame(state);
+                }
             } else {
-                showAlert("Load Error", "No saved game found.");
+                showAlert("Load Error", "No saved game found or failed to load.");
             }
         });
 
@@ -479,13 +498,23 @@ public class KlotskiApp extends Application {
         leftButton.setOnAction(e  -> moveSelected(Direction.LEFT));
         rightButton.setOnAction(e -> moveSelected(Direction.RIGHT));
         hintButton.setOnAction(e -> getAndApplyHint()); // 添加提示按钮事件处理
-        autoSolveButton.setOnAction(e -> autoSolver.toggleAutoSolve()); // Assign action
+        autoSolveButton.setOnAction(e -> {
+                    autoSolver.toggleAutoSolve();
+                    if (moveCountLabel != null && gameLogic.getBoard() != null) {
+                        moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+                    }
+                }
+
+        ); // Assign action
         undoButton.setOnAction(e  -> undo());
         saveButton.setOnAction(e  -> saveGame());
         restartButton.setOnAction(e -> {
             if (gameLogic != null) {
                 gameLogic.restartGame();
                 updateBoard();
+                if (moveCountLabel != null && gameLogic.getBoard() != null) {
+                    moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+                }
             }
         });
         menuButton.setOnAction(e  -> {
@@ -594,8 +623,8 @@ public class KlotskiApp extends Application {
                     73 * block.getWidth(), // 物块矩形的宽度
                     73 * block.getHeight()     // 物块矩形的高度
             );
-            rect.setFill(javafx.scene.paint.Color.valueOf(block.getColorString()));
-            rect.setStroke(javafx.scene.paint.Color.BLACK); // 默认边框颜色
+            rect.setFill(Color.valueOf(block.getColorString()));
+            rect.setStroke(Color.BLACK); // 默认边框颜色
             rect.setStrokeWidth(2);                         // 默认边框宽度
             // 这是关键步骤，用于之后从Rectangle中识别出具体的Block对象
             rect.setUserData(block);
@@ -629,6 +658,9 @@ public class KlotskiApp extends Application {
             boardGrid.getChildren().add(rect);
         }
         updateSelectedBlockHighlight();
+        if (moveCountLabel != null && gameLogic != null && gameLogic.getBoard() != null) {
+            moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+        }
     }
     private void updateSelectedBlockHighlight() {
         for (Node node : boardGrid.getChildren()) {
@@ -639,15 +671,15 @@ public class KlotskiApp extends Application {
 
                 if (modelOfThisRect != null && modelOfThisRect == this.selectedBlock) {
 
-                    javafx.scene.effect.DropShadow borderGlow = new javafx.scene.effect.DropShadow();
-                    borderGlow.setColor(javafx.scene.paint.Color.GOLD); // 高亮颜色
+                    DropShadow borderGlow = new DropShadow();
+                    borderGlow.setColor(Color.GOLD); // 高亮颜色
                     borderGlow.setRadius(12);      // 光晕半径
                     borderGlow.setSpread(0.8);     // 光晕扩散度
                     rectNode.setEffect(borderGlow);
 
                 } else {
                     rectNode.setEffect(null); // 移除所有效果
-                    rectNode.setStroke(javafx.scene.paint.Color.BLACK); // 恢复默认边框颜色
+                    rectNode.setStroke(Color.BLACK); // 恢复默认边框颜色
                     rectNode.setStrokeWidth(2);      // 恢复默认边框宽度
                 }
             }
@@ -904,7 +936,7 @@ public class KlotskiApp extends Application {
     }
     // Start a new game with a specific level - Modified to accept levelNumber
     private void startNewGame(int levelNumber) {
-        model.Level level = levelManager.getLevel(levelNumber);
+        Level level = levelManager.getLevel(levelNumber);
         this.selectedBlock = null;
         if (level != null) {
             /* ---------- 创建棋盘并应用布局 ---------- */
@@ -937,87 +969,85 @@ public class KlotskiApp extends Application {
 
             // Only start auto-save if the user is not a guest
             if (!userManager.isGuest()) {
-                // Use a supplier to always get the current game state
                 gameFileManager.startAutoSave(userManager.getCurrentUser(), () -> {
-                    // 在 Supplier 中创建一个新的 GameState 副本，包含当前状态
-                    return new GameState(
-                            gameLogic.getBoard().copy(), // 确保保存的是当前 Board 的副本
+                    GameState autoSaveState = new GameState(
+                            gameLogic.getBoard().copy(),
                             userManager.getCurrentUser().getUsername(),
                             currentLevel,
-                            new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制移动历史
-                            gameLogic.isGameWon()
+                            new ArrayDeque<>(gameLogic.getMoveHistory()),
+                            gameLogic.isGameWon() // false at start of new game
                     );
+                    // 确保使用 this.startTime 和 this.elapsedTime 的当前值
+                    // 如果计时器正在运行，startTime 是基准；如果已停止，elapsedTime 是最终值
+                    long timeToSave;
+                    if (timer != null) { // 假设 timer != null 表示正在计时或刚停止
+                        timeToSave = System.currentTimeMillis() - this.startTime;
+                    } else { // 如果计时器完全停止并且没有有效的startTime（例如，在菜单界面）
+                        timeToSave = this.elapsedTime; // 使用已累计的时间
+                    }
+                    autoSaveState.setTimeElapsed(timeToSave);
+                    System.out.println("[AUTOSAVE from startNewGame] Supplier Time: " + timeToSave + ", Won: " + autoSaveState.isGameWon());
+                    return autoSaveState;
                 });
             }
         } else {
             showAlert("Error", "Could not load level " + levelNumber);
         }
     }
-    // Load a saved game
     private void loadGame(GameState state) {
-        // Restore the game state using the loaded GameState object
-        // Do NOT create a new GameLogic() here if you want to update the current one.
-        // Assuming gameLogic field in KlotskiApp is the instance to update:
-        this.selectedBlock = null;
-        // Ensure gameLogic is not null before setting its state
-        if (gameLogic == null) {
-            gameLogic = new GameLogic(); // Should be initialized in start, but as a fallback
-        }
+        System.out.println("[LOADGAME_METHOD] Loading ongoing game state for level: " + state.getCurrentLevel()); // DEBUG
 
-        // 使用加载的状态更新 gameLogic
-        gameLogic.setBoard(state.getBoard()); // 设置棋盘状态
-        // Ensure GameLogic has setMoveHistory and setIsGameWon methods
+        this.selectedBlock = null;
+        if (gameLogic == null) {
+            gameLogic = new GameLogic();
+        }
+        gameLogic.setBoard(state.getBoard());
         if (state.getMoveHistory() != null) {
-            // 创建一个新的 Deque 并复制加载的历史
-            gameLogic.setMoveHistory(state.getMoveHistory()); // 设置移动历史
+            gameLogic.setMoveHistory(state.getMoveHistory());
         } else {
-            // If move history was not saved, initialize a new one with the current board state
-            java.util.Deque<model.Board> history=new java.util.ArrayDeque<>();
-            history.push(gameLogic.getBoard().copy());
+            Deque<Board> history = new ArrayDeque<>();
+            if (gameLogic.getBoard() != null) {
+                history.push(gameLogic.getBoard().copy());
+            }
             gameLogic.setMoveHistory(history);
         }
-        gameLogic.setIsGameWon(state.isGameWon());     // 设置游戏胜利状态
+        gameLogic.setIsGameWon(false); // 明确是未胜利的游戏
 
+        this.elapsedTime = state.getTimeElapsed();
+        this.currentLevel = state.getCurrentLevel();
 
-        // Restore elapsed time
-        elapsedTime = state.getTimeElapsed();
-        startTime = System.currentTimeMillis() - elapsedTime; // Calculate startTime based on loaded elapsed time
+        updateBoard();
+        if (moveCountLabel != null && gameLogic.getBoard() != null) {
+            moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
+        }
+        if (timeLabel != null) {
+            timeLabel.setText("Time: " + formatTime(this.elapsedTime));
+        }
 
-        // Restore level
-        currentLevel = state.getCurrentLevel(); // Assuming level is saved in GameState
-
-        // Clear selection as the board state has changed
-        selectedBlock = null;
-
-        // Update UI based on the loaded state
-        updateBoard(); // This will redraw the board based on gameLogic.getBoard()
-        moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount()); // Update move count display
-        timeLabel.setText("Time: " + formatTime(elapsedTime)); // Update time display
-
-        // Restart timer from the loaded elapsed time
         startTimer();
-        // Only start auto-save if user is logged in
+
         if (!userManager.isGuest()) {
             gameFileManager.startAutoSave(userManager.getCurrentUser(), () -> {
-                // 在 Supplier 中创建一个新的 GameState 副本，包含当前状态
-                return new GameState(
-                        gameLogic.getBoard().copy(), // 确保保存的是当前 Board 的副本
+                GameState autoSaveState = new GameState(
+                        gameLogic.getBoard().copy(),
                         userManager.getCurrentUser().getUsername(),
                         currentLevel,
-                        new ArrayDeque<>(gameLogic.getMoveHistory()), // 复制移动历史
-                        gameLogic.isGameWon()
+                        new ArrayDeque<>(gameLogic.getMoveHistory()),
+                        gameLogic.isGameWon() // Should be false here
                 );
+                long currentElapsedTime = (timer != null && startTime != 0) ? (System.currentTimeMillis() - this.startTime) : this.elapsedTime;
+                autoSaveState.setTimeElapsed(currentElapsedTime);
+                return autoSaveState;
             });
         }
     }
-    // Save the current game
+    // KlotskiApp.java
     private void saveGame() {
         if (userManager.isGuest()) {
             showAlert("Save Error", "Guests cannot save games.");
             return;
         }
 
-        // Ensure gameLogic is not null before saving its state
         if (gameLogic == null || gameLogic.getBoard() == null) {
             showAlert("Save Error", "No game to save.");
             return;
@@ -1026,17 +1056,23 @@ public class KlotskiApp extends Application {
             showAlert("Save Game", "Cannot save while auto-solving is in progress.");
             return;
         }
-        elapsedTime = System.currentTimeMillis() - startTime;
-        // Create GameState with all necessary state information
-        // Ensure GameState constructor accepts moveHistory and isGameWon
+
+        // Recalculate elapsedTime for precision at the moment of saving
+        this.elapsedTime = System.currentTimeMillis() - this.startTime; // Use this. for clarity
+        System.out.println("[SAVE DEBUG] KlotskiApp.saveGame():");
+        System.out.println("  - Current System.currentTimeMillis(): " + System.currentTimeMillis());
+        System.out.println("  - this.startTime: " + this.startTime);
+        System.out.println("  - Calculated this.elapsedTime for saving: " + this.elapsedTime + " ms (" + formatTime(this.elapsedTime) + ")");
+
         GameState state = new GameState(
-                gameLogic.getBoard().copy(), // 保存当前 Board 的副本
+                gameLogic.getBoard().copy(),
                 userManager.getCurrentUser().getUsername(),
-                currentLevel, // Save current level
-                new ArrayDeque<>(gameLogic.getMoveHistory()), // 包含移动历史的副本
-                gameLogic.isGameWon() // 包含游戏胜利状态
+                currentLevel,
+                new ArrayDeque<>(gameLogic.getMoveHistory()),
+                gameLogic.isGameWon()
         );
-        state.setTimeElapsed(elapsedTime); // 设置已经过去的时间
+        state.setTimeElapsed(this.elapsedTime);
+        System.out.println("  - GameState.timeElapsed set to: " + state.getTimeElapsed() + " ms (" + formatTime(state.getTimeElapsed()) + ")");
 
         if (gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), state)) {
             showAlert("Save Success", "Game saved successfully.");
@@ -1080,7 +1116,7 @@ public class KlotskiApp extends Application {
                 gameLogic.setMoveHistory(currentHistory); // 更新 gameLogic 的历史引用（如果必要）
 
                 updateBoard(); // 更新 UI
-
+                moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount()); // 更新步数显示
                 // 检查提示是否导致胜利
                 if (gameLogic.isGameWon()) {
                     showVictoryScene();
@@ -1127,22 +1163,34 @@ public class KlotskiApp extends Application {
             timer.stop();
         }
     }
+    // In KlotskiApp.java
+
     private void startTimer() {
         stopTimer(); // Stop any existing timer first
-        startTime = System.currentTimeMillis() - elapsedTime;
+        this.startTime = System.currentTimeMillis() - this.elapsedTime; // Ensure using member fields
 
-        timer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
-            elapsedTime = System.currentTimeMillis() - startTime;
-            timeLabel.setText("Time: " + formatTime(elapsedTime));
+        this.timer = new Timeline(new KeyFrame(Duration.seconds(1), e -> {
+            this.elapsedTime = System.currentTimeMillis() - this.startTime;
+
+            // Robust condition to update timeLabel:
+            // 1. The timeLabel object itself must exist.
+            // 2. The timeLabel must currently be part of *some* scene.
+            // 3. That scene must be the one currently displayed on the primaryStage.
+            if (this.timeLabel != null &&
+                    this.timeLabel.getScene() != null &&
+                    this.primaryStage.getScene() == this.timeLabel.getScene()) {
+                this.timeLabel.setText("Time: " + formatTime(this.elapsedTime));
+            }
         }));
 
-        timer.setCycleCount(Timeline.INDEFINITE);
-        timer.play();
+        this.timer.setCycleCount(Timeline.INDEFINITE);
+        this.timer.play();
     }
     // Stop the game timer
     private void stopTimer() {
         if (timer != null) {
             timer.stop();
+            timer = null;
             // elapsedTime is already updated in the timer's keyframe or when stopTimer is called elsewhere
         }
     }
