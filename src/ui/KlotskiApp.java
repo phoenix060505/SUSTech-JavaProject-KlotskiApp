@@ -690,13 +690,43 @@ public class KlotskiApp extends Application {
         updateSelectedBlockHighlight();
       });
 
+      ImageView imageView = new ImageView();
+      try{
+        Image image;
+        if(block.getType().equals("CaoCao")) image = new Image("CaoCao.png");
+        else if(block.getType().equals("GuanYu")) image = new Image("GuanYu.png");
+        else if(block.getType().equals("Soldier")) image = new Image("Soldier.png");
+        else image = new Image("General.png");
+
+        imageView.setImage(image);
+        imageView.setFitWidth(73 * block.getWidth());
+        imageView.setFitHeight(73 * block.getHeight());
+        imageView.setPreserveRatio(false); // 保持比例
+      } catch(Exception e){
+        System.err.println("图片加载失败: " + block.getImagePath());
+      }
+
+      StackPane blockContainer = new StackPane();
+      blockContainer.getChildren().addAll(rect, imageView);
+
+      blockContainer.setOnMouseClicked(e -> {
+        selectedBlock = block;
+        updateSelectedBlockHighlight();
+      });
+
       // 将物块矩形添加到 GridPane 中的正确位置
       GridPane.setColumnIndex(rect, block.getX());
       GridPane.setRowIndex(rect, block.getY());
       GridPane.setColumnSpan(rect, block.getWidth());
       GridPane.setRowSpan(rect, block.getHeight());
 
+      GridPane.setColumnIndex(blockContainer, block.getX());
+      GridPane.setRowIndex(blockContainer, block.getY());
+      GridPane.setColumnSpan(blockContainer, block.getWidth());
+      GridPane.setRowSpan(blockContainer, block.getHeight());
+      
       boardGrid.getChildren().add(rect);
+      boardGrid.getChildren().add(blockContainer);
     }
     updateSelectedBlockHighlight();
     if (moveCountLabel != null && gameLogic != null && gameLogic.getBoard() != null) {
