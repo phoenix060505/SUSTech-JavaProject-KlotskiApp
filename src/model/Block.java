@@ -9,6 +9,7 @@ public class Block implements Serializable  {
     private int width, height;
     private String type;
     private String colorString;
+    private String imagePath;
 
     public Block(int x, int y, int width, int height, String type, String colorString) {
         this.x = x;
@@ -65,4 +66,5 @@ public class Block implements Serializable  {
                 ", type='" + type + '\'' +
                 '}';
     }
+    public String getImagePath() { return imagePath;}
 }
