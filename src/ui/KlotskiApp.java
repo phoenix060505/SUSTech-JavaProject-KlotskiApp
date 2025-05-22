@@ -45,6 +45,7 @@ import static game.AboutGame.applyFadeTransition;
 public class KlotskiApp extends Application {
   // Game components
   private Image LoginBackground = new Image("LoginBackground.png");
+  private Image CaoCao, Guanyu, Soldier, General;
   private GameLogic gameLogic;
   private GameFileManager gameFileManager;
   private UserManager userManager;
@@ -92,6 +93,11 @@ public class KlotskiApp extends Application {
         timer.stop();
       }
     });
+
+    CaoCao = new Image("CaoCao.png");
+    Guanyu = new Image("Guanyu.png");
+    Soldier = new Image("Soldier.png");
+    General = new Image("General.png");
   }
 
   // Login scene
