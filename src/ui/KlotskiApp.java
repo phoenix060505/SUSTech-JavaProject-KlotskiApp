@@ -187,6 +187,9 @@ public class KlotskiApp extends Application {
     vbox.setPadding(new Insets(20));
     vbox.setStyle("-fx-background-color: #ffffff;");
     vbox.setFillWidth(true);
+    vbox.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
+        "-fx-background-size: cover;" +
+        "-fx-background-position: center;");
 
     // 创建可滚动文本容器
     Label introduction = new Label();
@@ -279,6 +282,9 @@ public class KlotskiApp extends Application {
     grid.setVgap(20);
     grid.setPadding(new Insets(20));
     grid.setStyle("-fx-background-color: #f0f0f0;");
+    grid.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
+        "-fx-background-size: cover;" +
+        "-fx-background-position: center;");
 
     Text title = new Text("Login");
     title.setFont(Font.font("Arial", FontWeight.BOLD, 20));
@@ -330,6 +336,9 @@ public class KlotskiApp extends Application {
     grid.setVgap(20);
     grid.setPadding(new Insets(20));
     grid.setStyle("-fx-background-color: #f0f0f0;");
+    grid.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
+        "-fx-background-size: cover;" +
+        "-fx-background-position: center;");
 
     Text title = new Text("Register");
     title.setFont(Font.font("Arial", FontWeight.BOLD, 20));
@@ -393,6 +402,9 @@ public class KlotskiApp extends Application {
     menuBox.setAlignment(Pos.CENTER);
     menuBox.setPadding(new Insets(20));
     menuBox.setStyle("-fx-background-color: #f0f0f0;");
+    menuBox.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
+        "-fx-background-size: cover;" +
+        "-fx-background-position: center;");
 
     Text title = new Text("Klotski Puzzle");
     title.setFont(Font.font("Arial", FontWeight.BOLD, 24));
