@@ -698,6 +698,8 @@ public class KlotskiApp extends Application {
 
     victoryBox.getChildren().addAll(title, moveText, timeText, newGameButton, menuButton);
 
+    SoundManager.playSound(VictoryBGM);
+
     Scene scene = new Scene(victoryBox, 400, 300);
     scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
 
