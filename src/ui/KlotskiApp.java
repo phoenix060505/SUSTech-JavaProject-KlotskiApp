@@ -544,6 +544,8 @@ public class KlotskiApp extends Application {
     boardGrid.setHgap(2);
     boardGrid.setVgap(2);
     boardGrid.setStyle("-fx-background-color: #333333;");
+    boardGrid.setMaxSize(Region.USE_PREF_SIZE, Region.USE_PREF_SIZE); // 关键设置
+    boardGrid.setPrefSize(305, 375); // 设置具体尺寸
 
     StackPane boardPane = new StackPane(boardGrid);
     root.setCenter(boardPane);
