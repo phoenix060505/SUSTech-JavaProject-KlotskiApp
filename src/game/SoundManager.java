@@ -33,4 +33,15 @@ public class SoundManager {
             player.play(); // 从头开始播放
         }
     }
+    
+    public static void stopSound(MediaPlayer player) {
+    if (player != null) {
+      player.stop();
+    }
+  }
+  public static void setVolume(MediaPlayer player, double value) {
+    if (player != null) {
+      player.setVolume(Math.max(0, Math.min(1, value)));
+    }
+  }
 }
