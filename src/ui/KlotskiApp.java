@@ -530,6 +530,8 @@ public class KlotskiApp extends Application {
   }
   // Game scene
   private void showGameScene() {
+    SoundManager.stopSound(LoginBGM);
+    SoundManager.playSound(GameBGM);
 
     /* ---------- 根布局 ---------- */
     BorderPane root = new BorderPane();
