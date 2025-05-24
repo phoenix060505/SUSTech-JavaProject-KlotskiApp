@@ -86,6 +86,12 @@ public class KlotskiApp extends Application {
     userManager = new UserManager();
     gameFileManager = new GameFileManager(); // Initialize the GameFileManager
     levelManager = new LevelManager();
+    try {
+      Font.loadFont(getClass().getResourceAsStream("/fonts/Life Story Demo.ttf"), 16);
+      Font.loadFont(getClass().getResourceAsStream("/fonts/Life Story Demo.ttf"), 16);
+    } catch (Exception e) {
+      System.err.println("Failed to load custom font: " + e.getMessage());
+    }
     primaryStage.setTitle("Klotski Puzzle");
 
     // --- 加载声音 ---
@@ -93,6 +99,9 @@ public class KlotskiApp extends Application {
     this.moveSoundPlayer = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\moveSound.wav");
 
     showLoginScene();
+    if (primaryStage.getScene() != null) {
+      primaryStage.getScene().getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
+    }
     primaryStage.show();
     primaryStage.setOnCloseRequest(event -> {
       if (gameFileManager != null) {
@@ -113,6 +122,8 @@ public class KlotskiApp extends Application {
   private void showLoginScene() {
     //HBox hBox = new HBox();
     VBox loginBox = new VBox(15);
+    loginBox.getStyleClass().add("root"); // 应用根样式
+    loginBox.getStyleClass().add("login-pane"); // 特定登录界面样式
     loginBox.setAlignment(Pos.CENTER);
     loginBox.setPadding(new Insets(20));
     // 设置背景图片（关键修改）
@@ -129,6 +140,7 @@ public class KlotskiApp extends Application {
     contentBox.setAlignment(Pos.CENTER);
 
     Text title = new Text("Klotski Puzzle");
+    title.getStyleClass().add("title-text");
     title.setFont(Font.font("System", FontWeight.BOLD, 36));
     LinearGradient gradient = new LinearGradient(//颜色渐变
         0,    // startX
@@ -187,6 +199,7 @@ public class KlotskiApp extends Application {
     loginBox.getChildren().add(overlay);
 
     Scene scene = new Scene(loginBox, 400, 300);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     primaryStage.setScene(scene);
   }
 
@@ -281,6 +294,8 @@ public class KlotskiApp extends Application {
 
     vbox.getChildren().addAll(scrollPane, spacer, label, backButton);
     Scene scene = new Scene(vbox, 600, 500); // 适当增加窗口高度
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
+
     primaryStage.setScene(scene);
   }
   // Login form
@@ -334,6 +349,7 @@ public class KlotskiApp extends Application {
     backButton.setOnAction(e -> showLoginScene());
 
     Scene scene = new Scene(grid, 400, 300);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
   }
@@ -396,6 +412,7 @@ public class KlotskiApp extends Application {
     backButton.setOnAction(e -> showLoginScene());
 
     Scene scene = new Scene(grid, 400, 300);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
   }
@@ -497,7 +514,9 @@ public class KlotskiApp extends Application {
     // Add level selection controls to the menu box
     menuBox.getChildren().addAll(title, welcomeText, levelLabel, levelComboBox, newGameButton, loadGameButton, logoutButton); // Add level controls
 
-    Scene scene = new Scene(menuBox, 400, 400); // Adjust scene size if needed
+    Scene scene = new Scene(menuBox, 400, 400);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
+// Adjust scene size if needed
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
   }
@@ -605,6 +624,8 @@ public class KlotskiApp extends Application {
     }
     /* ---------- 创建场景并注册键盘事件 ---------- */
     Scene scene = new Scene(root, 700, 600);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
+
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     // 事件过滤器：始终能收到键盘（不受焦点限制）
     scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
@@ -664,6 +685,8 @@ public class KlotskiApp extends Application {
     victoryBox.getChildren().addAll(title, moveText, timeText, newGameButton, menuButton);
 
     Scene scene = new Scene(victoryBox, 400, 300);
+    scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
+
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
   }
@@ -782,105 +805,6 @@ public class KlotskiApp extends Application {
         }
       }
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-//        // Add blocks
-//        for (Block block : board.getBlocks()) {
-//            Rectangle rect = new Rectangle(
-//                    70 * block.getWidth()+2 ,
-//                    70 * block.getHeight()
-//            );
-//            rect.setFill(javafx.scene.paint.Color.valueOf(block.getColorString()));
-//            rect.setStroke(javafx.scene.paint.Color.BLACK);
-//            rect.setStrokeWidth(2);
-//
-//            rect.setUserData(block);
-//
-//            // Make blocks interactive
-//            rect.setOnMouseClicked(e -> {
-//                // 游戏胜利后禁用块选择
-//                if (gameLogic.isGameWon()|| isAutoSolving) return;
-//                Block clickedModelBlock = (Block) ((Rectangle) e.getSource()).getUserData();
-//                if (this.selectedBlock == clickedModelBlock) {
-//                    this.selectedBlock = null; // 取消选中
-//                } else {
-//                    this.selectedBlock = clickedModelBlock; // 选中新的物块
-//                }
-//                updateSelectedBlockHighlight();
-//            });
-//
-//            // Add block to grid
-//            GridPane.setColumnIndex(rect, block.getX());
-//            GridPane.setRowIndex(rect, block.getY());
-//            GridPane.setColumnSpan(rect, block.getWidth());
-//            GridPane.setRowSpan(rect, block.getHeight());
-//
-//            boardGrid.getChildren().add(rect);
-//        }
-//
-//        // Update move count label
-//        moveCountLabel.setText("Moves: " + board.getMoveCount());
-//
-//        // Highlight the selected block
-//        updateSelectedBlockHighlight();
-//    }
-//    // Highlight the selected block
-//    private void updateSelectedBlockHighlight() {
-//        if (boardGrid == null) return;
-//        // Clear old highlights and apply type-specific colors
-//        for (Node node : boardGrid.getChildren()) {
-//            if (node instanceof Rectangle rect && isBlock(rect)) {
-//                if (rect.getWidth() > 0 && rect.getHeight() > 0
-//                        && (rect.getWidth() != 70 || rect.getHeight() != 70)) {
-//                rect.setStroke(Color.BLACK);
-//                rect.setStrokeWidth(2);
-//                rect.setEffect(null);
-//                }
-//            }
-//        }
-//        // Highlight selected block
-//        if (selectedBlock == null) return;
-//        for (Node node : boardGrid.getChildren()) {
-//            if (!(node instanceof Rectangle rect)) continue;
-//            int col = GridPane.getColumnIndex(rect) == null ? 0 : GridPane.getColumnIndex(rect);
-//            int row = GridPane.getRowIndex(rect) == null ? 0 : GridPane.getRowIndex(rect);
-//            int spanX = GridPane.getColumnSpan(rect) == null ? 1 : GridPane.getColumnSpan(rect);
-//            int spanY = GridPane.getRowSpan(rect) == null ? 1 : GridPane.getRowSpan(rect);
-//
-//            if (selectedBlock.getX() == col && selectedBlock.getY() == row
-//                    && selectedBlock.getWidth() == spanX
-//                    && selectedBlock.getHeight() == spanY) {
-//                // Create bright glow effect
-//                DropShadow glow = new DropShadow();
-//                glow.setColor(Color.GOLD);
-//                glow.setRadius(10);
-//                glow.setSpread(0.8);
-//                rect.setEffect(glow);
-//                // Set distinctive border
-//                rect.setStroke(Color.YELLOW);
-//                rect.setStrokeWidth(4);
-//                rect.setStroke(Color.YELLOW);
-//                rect.setStrokeWidth(4);
-//                rect.getStrokeDashArray().clear();
-//                break;
-//            }
-//        }
   }
   // Move the selected block
   private void moveSelected(Direction direction) {

@@ -33,8 +33,8 @@ public class WavePasswordConfirm extends StackPane {
 
     private static final double LABEL_BOX_Y_BLURRED_INITIAL = 10;
 
-    private static final Color BAR_FOCUSED_COLOR = Color.web("#5264AE");
-    private static final Color BAR_DEFAULT_COLOR = Color.web("#5264AE");
+    private static final Color BAR_FOCUSED_COLOR = Color.web("#E87A00"); // 例如: 暗橙色
+    private static final Color BAR_DEFAULT_COLOR = Color.web("#8B4513"); // 例如: 鞍褐色
 
 
     public WavePasswordConfirm(String label) {

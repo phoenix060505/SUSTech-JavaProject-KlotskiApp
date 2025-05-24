@@ -35,8 +35,9 @@ public class WavePasswordField extends StackPane {
     private static final double LABEL_BOX_Y_FOCUSED_ADJUST = -5; // HBox 整体的微调（如果需要）
     private static final double LABEL_BOX_Y_BLURRED_INITIAL = 10; // HBox 初始的Y偏移
 
-    private static final Color BAR_FOCUSED_COLOR = Color.web("#5264AE");
-    private static final Color BAR_DEFAULT_COLOR = Color.web("#5264AE");
+    private static final Color BAR_FOCUSED_COLOR = Color.web("#E87A00"); // 例如: 暗橙色
+    private static final Color BAR_DEFAULT_COLOR = Color.web("#8B4513"); // 例如: 鞍褐色
+
 
     // 用于存储每个字符的原始Y位置（如果它们在HBox中有不同基线，虽然不太可能）
     // private final java.util.List<Double> originalCharYPositions = new java.util.ArrayList<>();

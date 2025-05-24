@@ -1,0 +1,116 @@
+.root { /* 应用于场景的根节点 */
+    -fx-font-family: "Georgia", serif; /* 默认英文字体 */
+    -fx-base: #D2B48C; /* JavaFX内置控件会参考-fx-base来派生颜色，可以设为一个暖色基调 */
+    -fx-background-color: #F5EFE6; /* 主背景色 - 深米色 */
+}
+
+.label {
+    -fx-text-fill: #4A3B2A; /* 深棕色文字 */
+    -fx-font-size: 15px; /* 英文可以稍微大一点 */
+}
+
+.title-text { /* Klotski Puzzle 标题 */
+    -fx-font-family: "Trajan Pro", "Georgia", serif; /* 标题可以使用更具风格的字体 */
+    -fx-font-size: 36px;
+    -fx-font-weight: bold; /* Trajan Pro 本身可能就是粗体 */
+    -fx-fill: linear-gradient(from 0% 0% to 100% 100%, #8B4513, #B8860B); /* 鞍褐色到暗金色的渐变 */
+    -fx-effect: dropshadow(two-pass-box, rgba(0,0,0,0.5), 5, 0.0, 2, 2);
+}
+
+.welcome-text {
+    -fx-font-size: 18px;
+    -fx-text-fill: #603813; /* 略深的棕色 */
+}
+
+/* 按钮 (使用前面定义的 .warm-button 或类似) */
+/* 在 warm_theme.css 文件中 */
+.button {
+    /* 例如，使用带有70%不透明度的巧克力色 */
+    -fx-background-color: rgba(210, 105, 30, 0.7); /* R=210, G=105, B=30 (巧克力色), A=0.7 (70%不透明度) */
+    -fx-text-fill: #FFF8DC;
+    -fx-font-family: "Verdana", sans-serif;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-padding: 10px 20px;
+    -fx-background-radius: 8px; /* 保持圆角 */
+    -fx-border-radius: 8px;
+    -fx-border-color: rgba(139, 69, 19, 0.5); /* 边框也可以半透明，例如50%不透明度的鞍褐色 */
+    -fx-border-width: 1px;
+    -fx-effect: dropshadow(three-pass-box, rgba(42,29,17,0.2), 5, 0, 1, 1);
+}
+
+.button:hover {
+    -fx-background-color: rgba(232, 122, 0, 0.8); /* 悬浮时透明度可略高或颜色略亮 */
+    -fx-effect: dropshadow(three-pass-box, rgba(42,29,17,0.4), 8, 0, 2, 2);
+}
+
+.button:pressed {
+    -fx-background-color: rgba(184, 92, 0, 0.9); /* 按下时透明度可更高 */
+    -fx-effect: innershadow(three-pass-box, rgba(42,29,17,0.2), 5, 0, 0, 1);
+}
+
+.button:hover {
+    -fx-background-color: #E87A00;
+}
+
+.button:pressed {
+    -fx-background-color: #B85C00;
+    -fx-effect: innershadow(three-pass-box, rgba(0,0,0,0.2), 5, 0, 0, 1);
+}
+
+/* 游戏棋盘 */
+.game-board-grid {
+    -fx-background-color: #8B4513; /* 棋盘背景 - 鞍褐色 (深木色) */
+    -fx-padding: 10px;
+    -fx-hgap: 4px;
+    -fx-vgap: 4px;
+    -fx-background-radius: 10px;
+    -fx-border-color: #5C2F0B; /* 更深的木色边框 */
+    -fx-border-width: 3px;
+    -fx-border-radius: 10px;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.3), 10, 0, 3, 3);
+}
+
+/* 棋盘格子 */
+.board-cell-pane {
+    -fx-background-color: #DEB887; /* 格子颜色 - 硬木色/原木色 */
+    -fx-background-radius: 4px;
+}
+
+/* 棋子方块 (Rectangle) */
+.block-rectangle-node {
+    -fx-stroke-width: 1px;
+    -fx-stroke: #4A3B2A; /* 深棕色描边 */
+    -fx-arc-width: 8;
+    -fx-arc-height: 8;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.3), 5, 0.1, 1, 1);
+}
+
+/* 不同类型棋子的颜色 (如果图片有透明区域或作为底色) */
+.block-type-caocao .block-rectangle-node { -fx-fill: #A52A2A; } /* 曹操 - 棕红色 */
+.block-type-guanyu .block-rectangle-node { -fx-fill: #8FBC8F; } /* 关羽 - 暗海绿色 (偏暖的绿) */
+.block-type-general .block-rectangle-node { -fx-fill: #B0A18F; } /* 将军 - 暖灰褐色 */
+.block-type-soldier .block-rectangle-node { -fx-fill: #CD853F; } /* 士兵 - 秘鲁色 (偏橙的棕) */
+
+/* 选中棋子的高亮样式 */
+.block-rectangle-node-selected {
+    -fx-stroke: #FFB732; /* 暖黄色/橙金色描边 */
+    -fx-stroke-width: 2.5px;
+    -fx-effect: dropshadow(gaussian, #FFB732, 18, 0.5, 0, 0);
+}
+
+/* 输入框 (WaveTextField 等) */
+.wave-input { /* 假设这是 WaveTextField 内部 TextField 的样式类 */
+    -fx-text-fill: #3A2D1F; /* 深棕色文字 */
+    -fx-prompt-text-fill: #7A6D5F; /* 提示文字颜色 */
+    -fx-font-family: "Lato", sans-serif; /* 输入框用清晰的无衬线 */
+}
+.wave-label { /* 标签文字 */
+    -fx-text-fill: #8B4513; /* 鞍褐色 */
+}
+/* WaveTextField 下划线颜色 */
+/* 您可能需要查看 WaveTextField 内部 Rectangle 的ID或样式类来精确控制 */
+/* 假设 centerBar 是那个 Rectangle，并且可以被外部CSS影响 */
+.wave-bar > .rectangle { /* 尝试定位到那个bar中的rectangle */
+    /* -fx-fill: #8B4513; /* 默认下划线颜色 - 鞍褐色 */
+}
