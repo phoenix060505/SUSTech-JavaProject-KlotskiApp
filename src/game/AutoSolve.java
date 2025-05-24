@@ -15,7 +15,7 @@ import java.util.function.Consumer;
 import java.util.function.LongSupplier;
 
 public class AutoSolve {
-    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.1;
+    private static final double AUTO_SOLVE_STEP_DELAY_SECONDS = 0.001;
     private boolean isAutoSolving = false;
     private GameLogic gameLogic;
     private Button autoSolveButton;

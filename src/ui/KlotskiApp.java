@@ -12,6 +12,7 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyEvent;
+import javafx.scene.media.MediaPlayer;
 import javafx.scene.paint.CycleMethod;
 import javafx.scene.paint.LinearGradient;
 import javafx.scene.paint.Stop;
@@ -40,9 +41,13 @@ import ui.controls.WaveTextField;
 import ui.controls.WavePasswordField;
 import java.util.*;
 import javafx.animation.TranslateTransition;
-
+import javafx.scene.media.Media;
+import javafx.scene.media.MediaPlayer;
+import java.io.File;
 import static game.AboutGame.applyFadeTransition;
 public class KlotskiApp extends Application {
+  //Move_Sound
+  private MediaPlayer moveSoundPlayer;
   // Game components
   private Image LoginBackground = new Image("LoginBackground.png");
   private Image CaoCao, Guanyu, Soldier, General;
@@ -82,9 +87,13 @@ public class KlotskiApp extends Application {
     gameFileManager = new GameFileManager(); // Initialize the GameFileManager
     levelManager = new LevelManager();
     primaryStage.setTitle("Klotski Puzzle");
+
+    // --- 加载声音 ---
+    SoundManager sm = new SoundManager(); // 创建 SoundManager 实例
+    this.moveSoundPlayer = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\moveSound.wav");
+
     showLoginScene();
     primaryStage.show();
-    // Add a shutdown hook to clean up resources when the application closes
     primaryStage.setOnCloseRequest(event -> {
       if (gameFileManager != null) {
         gameFileManager.shutdown();
@@ -876,7 +885,7 @@ public class KlotskiApp extends Application {
       // 尝试在游戏逻辑中移动块
       if (gameLogic.moveBlock(selectedBlock, direction)) {
         // 移动成功后，selectedBlock 的 x, y 已经是新位置
-
+        SoundManager.playSound(this.moveSoundPlayer);
         // 查找与 selectedBlock 对应的 Rectangle 节点以进行动画
         Rectangle blockRectangleToAnimate = (Rectangle) boardGrid.getChildren().stream().filter(node -> node.getUserData() == selectedBlock && node instanceof Rectangle).findFirst().orElse(null);
         // 通过比较 UserData 来找到对应的 Rectangle
