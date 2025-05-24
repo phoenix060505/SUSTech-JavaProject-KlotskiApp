@@ -530,7 +530,9 @@ public class KlotskiApp extends Application {
     /* ---------- 根布局 ---------- */
     BorderPane root = new BorderPane();
     root.setPadding(new Insets(10));
-    root.setStyle("-fx-background-color: #f0f0f0;");
+    root.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
+        "-fx-background-size: cover;" +
+        "-fx-background-position: center;");
 
     /* ---------- 顶部信息栏 ---------- */
     HBox topPanel = new HBox(20);
