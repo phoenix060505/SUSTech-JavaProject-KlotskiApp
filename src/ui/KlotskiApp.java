@@ -48,6 +48,7 @@ import static game.AboutGame.applyFadeTransition;
 public class KlotskiApp extends Application {
   //Move_Sound
   private MediaPlayer moveSoundPlayer;
+  private MediaPlayer BGMPlayer;
   // Game components
   private Image LoginBackground = new Image("LoginBackground.png");
   private Image CaoCao, Guanyu, Soldier, General;
@@ -97,6 +98,9 @@ public class KlotskiApp extends Application {
     // --- 加载声音 ---
     SoundManager sm = new SoundManager(); // 创建 SoundManager 实例
     this.moveSoundPlayer = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\moveSound.wav");
+    this.BGMPlayer = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\BGM.wav");
+    SoundManager.setVolume(BGMPlayer, 0.2);
+    SoundManager.playSound(BGMPlayer);
 
     showLoginScene();
     if (primaryStage.getScene() != null) {
@@ -1238,5 +1242,9 @@ public class KlotskiApp extends Application {
   // Main method
   public static void main(String[] args) {
     launch(args);
+  }
+
+  public void stop(){
+    SoundManager.stopSound(BGMPlayer);
   }
 }
