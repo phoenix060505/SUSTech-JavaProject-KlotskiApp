@@ -7,8 +7,8 @@ import java.util.*;
 
 public class Solver {
 
-    private Set<Board> visitedStates;
-    private Queue<Node> queue;
+    private final Set<Board> visitedStates;
+    private final Queue<Node> queue;
 
     public Solver() {
         visitedStates = new HashSet<>();
@@ -28,7 +28,6 @@ public class Solver {
         // 清空之前的求解状态
         visitedStates.clear();
         queue.clear();
-
         // 创建初始节点并加入队列和已访问集合
         Node initialNode = new Node(startBoard.copy(), null); // 使用副本作为起始节点
         queue.add(initialNode);
@@ -38,7 +37,6 @@ public class Solver {
         while (!queue.isEmpty()) {
             Node currentNode = queue.poll();
             Board currentBoard = currentNode.board;
-
             // 检查当前状态是否为胜利状态
             // 使用 GameLogic 的 isGameWon 方法进行检查
             GameLogic tempLogicCheck = new GameLogic();
@@ -46,7 +44,6 @@ public class Solver {
             if (tempLogicCheck.isGameWon()) {
                 return reconstructPath(currentNode);
             }
-
             // 查找所有可能的合法移动，生成下一个状态
             List<Board> nextStates = getNextStates(currentBoard);
 

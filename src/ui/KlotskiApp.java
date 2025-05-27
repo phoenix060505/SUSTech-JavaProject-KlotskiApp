@@ -209,8 +209,9 @@ public class KlotskiApp extends Application {
     Scene scene = new Scene(loginBox, 400, 300);
     scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     primaryStage.setScene(scene);
+    primaryStage.centerOnScreen();
   }
-
+  //game introduction
   private void showGameIntroduction() {
     VBox vbox = new VBox(20);
     vbox.setAlignment(Pos.BOTTOM_CENTER);
@@ -360,6 +361,7 @@ public class KlotskiApp extends Application {
     scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
+    primaryStage.centerOnScreen();
   }
   // Register form
   private void showRegisterForm() {
@@ -419,10 +421,11 @@ public class KlotskiApp extends Application {
 
     backButton.setOnAction(e -> showLoginScene());
 
-    Scene scene = new Scene(grid, 400, 300);
+    Scene scene = new Scene(grid, 500, 400);
     scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
+    primaryStage.centerOnScreen();
   }
   // Main menu
   private void showMainMenu() {
@@ -527,6 +530,7 @@ public class KlotskiApp extends Application {
 // Adjust scene size if needed
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
+    primaryStage.centerOnScreen();
   }
   // Game scene
   private void showGameScene() {
@@ -589,7 +593,9 @@ public class KlotskiApp extends Application {
         this::updateBoard,
         this::showVictoryScene,
         this::showAlert,
+        this::saveGameOnAutoSolveWin,
         () -> elapsedTime
+
     );
     // 禁用游客存档
 
@@ -611,11 +617,19 @@ public class KlotskiApp extends Application {
     saveButton.setOnAction(e  -> saveGame());
     restartButton.setOnAction(e -> {
       if (gameLogic != null) {
-        gameLogic.restartGame();
+        if (autoSolver != null && autoSolver.isAutoSolving()) {
+          showAlert("Restart", "Cannot restart while auto-solving is in progress.");
+          return;
+        }
+        gameLogic.restartGame(currentLevel);
         updateBoard();
         if (moveCountLabel != null && gameLogic.getBoard() != null) {
           moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
         }
+        elapsedTime = 0;
+        startTime = System.currentTimeMillis();
+        if (timeLabel != null) {
+          timeLabel.setText("Time: 00:00");}
       }
     });
     menuButton.setOnAction(e  -> {
@@ -637,7 +651,7 @@ public class KlotskiApp extends Application {
       b.setFocusTraversable(false);
     }
     /* ---------- 创建场景并注册键盘事件 ---------- */
-    Scene scene = new Scene(root, 700, 600);
+    Scene scene = new Scene(root, 1100, 600);
     scene.getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
 
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
@@ -659,7 +673,7 @@ public class KlotskiApp extends Application {
     });
     // ---------- 设置场景并抢焦点 ----------
     primaryStage.setScene(scene);
-
+    primaryStage.centerOnScreen();
     root.requestFocus();                              // 首帧立即可用方向键
     root.setOnMouseClicked(ev -> root.requestFocus()); // 鼠标点击后再夺回焦点
 
@@ -705,6 +719,7 @@ public class KlotskiApp extends Application {
 
     scene.getStylesheets().add(getClass().getResource("/css/wave.css").toExternalForm());
     primaryStage.setScene(scene);
+    primaryStage.centerOnScreen();
   }
   // Update the game board display
   private void updateBoard() {
@@ -828,8 +843,29 @@ public class KlotskiApp extends Application {
     if (gameLogic != null && (gameLogic.isGameWon() || isAutoSolving)) {
       return;
     }
+      if (gameLogic != null && gameLogic.isGameWon()) {
+          showVictoryScene();
+          // --- Start of specific save logic for win condition (ANIMATION PATH) ---
+          if (!userManager.isGuest()) {
+              System.out.println("[WIN_SAVE_ANIM] Game won, saving specifically for this win event.");
+              GameState winningState = new GameState(
+                      gameLogic.getBoard().copy(), // Use a copy
+                      userManager.getCurrentUser().getUsername(),
+                      currentLevel,
+                      new ArrayDeque<>(gameLogic.getMoveHistory()), // Use a copy
+                      true // Game is definitely won here
+              );
+              long finalElapsedTime = System.currentTimeMillis() - startTime; // Capture time at win
+              winningState.setTimeElapsed(finalElapsedTime); // Set the accurate time of win
+              this.elapsedTime = finalElapsedTime; // Update global elapsedTime as well
+              gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), winningState);
+              System.out.println("  - Saved winning state. Elapsed time: " + formatTime(finalElapsedTime));
+          }
+          // --- End of specific save logic for win condition ---
+      }
 
-    if (selectedBlock != null && gameLogic != null) {
+
+      if (selectedBlock != null && gameLogic != null) {
       // 记录移动前选定块的逻辑位置，用于计算动画的相对位移
       int oldGridX = selectedBlock.getX();
       int oldGridY = selectedBlock.getY();
@@ -1249,12 +1285,50 @@ public class KlotskiApp extends Application {
       alert.showAndWait();
     });
   }
+  private void saveGameOnAutoSolveWin() {
+    if (userManager.isGuest()) {
+      System.out.println("Auto-solve completed with a win. Guest game not saved.");
+      return; // 游客不能保存
+    }
+
+    if (gameLogic == null || gameLogic.getBoard() == null) {
+      System.err.println("Cannot save auto-solve win: No game data available.");
+      return;
+    }
+
+    // 确保 elapsedTime 是最新的
+    // showVictoryScene -> stopTimer() 已经被调用
+    // startTime 是游戏开始或加载时设置的
+    long finalElapsedTime;
+    if (this.startTime != 0) {
+      finalElapsedTime = System.currentTimeMillis() - this.startTime;
+    } else {
+      finalElapsedTime = this.elapsedTime; // Fallback
+    }
+
+    GameState state = new GameState(
+            gameLogic.getBoard().copy(), // 当前棋盘（已胜利）
+            userManager.getCurrentUser().getUsername(),
+            currentLevel,
+            new ArrayDeque<>(gameLogic.getMoveHistory()), // 当前的移动历史
+            true // 明确游戏已胜利
+    );
+    state.setTimeElapsed(finalElapsedTime);
+
+    System.out.println("[AUTOSOLVE_WIN_SAVE] Saving game state. User: " + userManager.getCurrentUser().getUsername() + ", Time: " + formatTime(finalElapsedTime));
+
+    if (gameFileManager.saveGame(userManager.getCurrentUser().getUsername(), state)) {
+      System.out.println("Auto-solve completed with a win. Game saved successfully for user: " + userManager.getCurrentUser().getUsername());
+      // 可以选择性地显示一个简短的提示，但避免过于打扰
+      // Platform.runLater(() -> showAlert("Auto-Solve Complete", "Game automatically saved!"));
+    } else {
+      // 自动保存失败，可以显示一个错误提示
+      Platform.runLater(() -> showAlert("Save Error", "Auto-solve won, but failed to save game automatically."));
+    }
+  }
+
   // Main method
   public static void main(String[] args) {
     launch(args);
-  }
-
-  public void stop(){
-    SoundManager.stopSound(BGMPlayer);
   }
 }

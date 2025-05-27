@@ -3,10 +3,6 @@ package model;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-
-/**
- * 关卡数据模型 —— 纯 POJO，不再依赖 JavaFX 的 Color。
- */
 public class Level implements Serializable {
     private static final long serialVersionUID = 1L;
 

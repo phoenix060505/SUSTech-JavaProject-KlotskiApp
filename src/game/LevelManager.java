@@ -14,7 +14,6 @@ public class LevelManager {
     private final java.util.List<Level> levels = new java.util.ArrayList<>();
 
     public LevelManager(){ init(); }
-
     private void init(){
         /* ---------- Level 1 ---------- */
         Level lv1=new Level("Classic");

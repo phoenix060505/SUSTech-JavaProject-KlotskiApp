@@ -2,17 +2,17 @@
 package game;
 import model.Block;
 import model.Board;
-
+import game.LevelManager;
 import java.awt.*;
 import java.util.Deque;
 import java.util.ArrayDeque;
 import java.util.List;
-
+import model.Level;
 public class GameLogic {
     private Board board;
     private boolean isGameWon;
     private Deque<Board> moveHistory;
-    private Solver solver;
+    private final Solver solver;
     private List<Board> activeSolutionHintPath = null;
     private int currentHintStepInActivePath = 0;
 
@@ -28,9 +28,6 @@ public class GameLogic {
         } else {
             this.isGameWon = false;
         }
-        // 注意：此方法不再主动管理 moveHistory.clear() 或 push()。
-        // KlotskiApp 在调用此方法后，会根据需要（如加载游戏、应用提示）
-        // 通过 getMoveHistory() 和 setMoveHistory() 来管理历史栈。
     }
 
     public void clearActiveHintPath() {
@@ -46,25 +43,14 @@ public class GameLogic {
         this.isGameWon = isGameWon;
     }
 
-    public void initializeGame() {
+    public void initializeGame(int levelNumber) {
         board = new Board();
         isGameWon = false;
         moveHistory.clear();
         clearActiveHintPath();
-
-        Block caoBlock = new Block(1, 0, 2, 2, "CaoCao", "RED");
-        board.addBlock(caoBlock);
-        Block guanBlock = new Block(1, 2, 2, 1, "GuanYu", "GREEN");
-        board.addBlock(guanBlock);
-        board.addBlock(new Block(0, 0, 1, 2, "General", "BLUE"));
-        board.addBlock(new Block(3, 0, 1, 2, "General", "BLUE"));
-        board.addBlock(new Block(0, 2, 1, 2, "General", "BLUE"));
-        board.addBlock(new Block(3, 2, 1, 2, "General", "BLUE"));
-        board.addBlock(new Block(0, 4, 1, 1, "Soldier", "ORANGE"));
-        board.addBlock(new Block(1, 3, 1, 1, "Soldier", "ORANGE"));
-        board.addBlock(new Block(2, 3, 1, 1, "Soldier", "ORANGE"));
-        board.addBlock(new Block(3, 4, 1, 1, "Soldier", "ORANGE"));
-
+        LevelManager levelManager = new LevelManager();
+        Level level = levelManager.getLevel(levelNumber);
+        level.applyToBoard(board);
         this.board.resetMoveCount(); // 确保初始步数为0
         saveCurrentState(); // 保存初始状态 (moveCount 为 0)
     }
@@ -197,11 +183,10 @@ public class GameLogic {
         return null;
     }
 
-    public void restartGame() {
+    public void restartGame(int currentLevel) {
         if (board != null) {
             board.resetMoveCount();
-
-            initializeGame();
+            initializeGame(currentLevel);
         }
     }
 }

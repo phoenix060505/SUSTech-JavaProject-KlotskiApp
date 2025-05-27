@@ -26,7 +26,7 @@ public class AutoSolve {
     private  BiConsumer<String,String> onShowAlert;
     private  LongSupplier getElapsedTime;
     private  Runnable onSaveGame;
-
+    private Runnable onAutoSolveCompletedAndWon; // 新增：胜利并完成后调用的保存回调
 
     public AutoSolve(GameLogic gameLogic,
                      Button autoSolveButton,
@@ -35,6 +35,7 @@ public class AutoSolve {
                      Runnable onUpdateBoard,
                      Runnable onShowVictory,
                      BiConsumer<String, String> onShowAlert,
+                     Runnable onAutoSolveCompletedAndWon, // 新增参数
                      LongSupplier getElapsedTime) {
         this.gameLogic = gameLogic;
         this.autoSolveButton = autoSolveButton;
@@ -44,6 +45,8 @@ public class AutoSolve {
         this.onShowVictory = onShowVictory;
         this.getElapsedTime = getElapsedTime;
         this.onShowAlert = onShowAlert;
+        this.onAutoSolveCompletedAndWon = onAutoSolveCompletedAndWon; // 新增赋值
+
     }
 
     public void toggleAutoSolve() {
@@ -89,13 +92,25 @@ public class AutoSolve {
     }
 
     private void performAutoSolveStep() {
-        if (!isAutoSolving || gameLogic.isGameWon()) {
-            stopAutoSolving();
-            return;
+        if (!isAutoSolving || (gameLogic != null && gameLogic.isGameWon())) { // [vite: 16]
+            // 如果在开始此步骤时游戏已经胜利 (可能是上一步导致的)，也应该停止并尝试保存
+            if (gameLogic != null && gameLogic.isGameWon() && isAutoSolving) { // 确保是自动求解中赢得的
+                // isAutoSolving is true here, will be set to false in stopAutoSolving
+                boolean wasWinningDuringAutoSolve = isAutoSolving;
+                onShowVictory.run(); // 显示胜利场景
+                stopAutoSolving();   // 停止自动求解状态
+                if (wasWinningDuringAutoSolve && onAutoSolveCompletedAndWon != null) {
+                    onAutoSolveCompletedAndWon.run(); // 执行保存回调
+                }
+            } else {
+                stopAutoSolving(); // [vite: 16]
+            }
+            return; // [vite: 16]
         }
 
-        if (solverProgress != null) {
-            solverProgress.setVisible(true);
+
+        if (solverProgress != null) { // [vite: 16]
+            solverProgress.setVisible(true); // [vite: 16]
         }
 
         Task<Board> solverTask = new Task<>() {
@@ -122,10 +137,15 @@ public class AutoSolve {
                 currentHistory.push(gameLogic.getBoard().copy());
                 gameLogic.setMoveHistory(currentHistory);
                 onUpdateBoard.run();
-
+                gameLogic.setMoveHistory(currentHistory);
+                onUpdateBoard.run();
                 if (gameLogic.isGameWon()) {
+                    boolean wasWinningDuringAutoSolve = isAutoSolving; // 捕获当前状态
                     onShowVictory.run();
-                    stopAutoSolving();
+                    stopAutoSolving();   // 这会将 isAutoSolving 设为 false
+                    if (wasWinningDuringAutoSolve && onAutoSolveCompletedAndWon != null) {
+                        onAutoSolveCompletedAndWon.run(); // 调用保存回调
+                    }
                 } else if (isAutoSolving) {
                     PauseTransition pause = new PauseTransition(Duration.seconds(AUTO_SOLVE_STEP_DELAY_SECONDS));
                     pause.setOnFinished(e -> performAutoSolveStep());

@@ -10,6 +10,8 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
+import java.util.zip.CRC32; // Import for checksum calculation
+import java.io.ByteArrayOutputStream; // Import for checksum calculation
 
 public class GameFileManager {
     private static final String USER_FILE = "users.dat";//用户数据文件路径
@@ -26,6 +28,42 @@ public class GameFileManager {
         }
         //创建了一个以时间为轴的线性执行器，打开，运行，关闭任务
         scheduler = Executors.newSingleThreadScheduledExecutor();
+    }
+    private static class UserDataWrapper implements Serializable {
+        private static final long serialVersionUID = 2L; // Use a new serialVersionUID
+        private Map<String, User> users;
+        private long checksum;
+
+        public UserDataWrapper(Map<String, User> users, long checksum) {
+            this.users = users;
+            this.checksum = checksum;
+        }
+
+        public Map<String, User> getUsers() {
+            return users;
+        }
+
+        public long getChecksum() {
+            return checksum;
+        }
+    }
+    private long calculateChecksum(Map<String, User> usersObject) {
+        if (usersObject == null) {
+            return 0L; // Or some other default for null input
+        }
+        try (ByteArrayOutputStream baos = new ByteArrayOutputStream();
+             ObjectOutputStream oos = new ObjectOutputStream(baos)) {
+            oos.writeObject(usersObject);
+            byte[] bytes = baos.toByteArray();
+            CRC32 crc32 = new CRC32();
+            crc32.update(bytes);
+            return crc32.getValue();
+        } catch (IOException e) {
+            // This should ideally not happen with ByteArrayOutputStream
+            System.err.println("Error calculating checksum: " + e.getMessage());
+            e.printStackTrace();
+            return -1L; // Indicate an error in checksum calculation
+        }
     }
     //保存文件方法，要求输入username和GameState state(GameState的定义在GameState文件当中，包含board，username，currentLevel，moveHistory，isGameWon)
     public boolean saveGame(String username, GameState state) {
@@ -70,37 +108,74 @@ public class GameFileManager {
 
     // 将User存储到User_File
     public boolean saveUsers(Map<String, User> users) {
-        try {
-            FileOutputStream fileOut = new FileOutputStream(USER_FILE);
-            ObjectOutputStream out = new ObjectOutputStream(fileOut);
-            out.writeObject(users);
-            out.close();
-            fileOut.close();
+        if (users == null) {
+            System.err.println("Cannot save null users map.");
+            return false;
+        }
+        long checksum = calculateChecksum(users);
+        UserDataWrapper wrapper = new UserDataWrapper(users, checksum);
+
+        try (FileOutputStream fileOut = new FileOutputStream(USER_FILE);
+             ObjectOutputStream out = new ObjectOutputStream(fileOut)) {
+            out.writeObject(wrapper);
+            System.out.println("User data saved successfully with checksum.");
             return true;
         } catch (IOException e) {
+            System.err.println("Error saving users: " + e.getMessage());
             e.printStackTrace();
             return false;
         }
     }
 
-    //从User_File中加载User
+    // Inside GameFileManager.java
+
     @SuppressWarnings("unchecked")
     public Map<String, User> loadUsers() {
         File file = new File(USER_FILE);
         if (!file.exists()) {
-            return new HashMap<>();
+            System.out.println("User file not found. Returning new empty map.");
+            return new HashMap<>(); // No file, return empty map
         }
 
-        try {
-            FileInputStream fileIn = new FileInputStream(USER_FILE);
-            ObjectInputStream in = new ObjectInputStream(fileIn);
-            Map<String, User> users = (Map<String, User>) in.readObject();
-            in.close();
-            fileIn.close();
-            return users;
-        } catch (IOException | ClassNotFoundException e) {
+        try (FileInputStream fileIn = new FileInputStream(USER_FILE);
+             ObjectInputStream in = new ObjectInputStream(fileIn)) {
+            Object readObject = in.readObject();
+
+            if (readObject instanceof UserDataWrapper) {
+                UserDataWrapper wrapper = (UserDataWrapper) readObject;
+                Map<String, User> users = wrapper.getUsers();
+                long storedChecksum = wrapper.getChecksum();
+
+                // It's crucial that calculateChecksum uses the exact same serialization
+                // process as what was used to generate the original bytes for the stored checksum.
+                long calculatedChecksum = calculateChecksum(users);
+
+                if (storedChecksum == calculatedChecksum) {
+                    System.out.println("User data loaded successfully. Checksum matches.");
+                    return users != null ? users : new HashMap<>();
+                } else {
+                    System.err.println("User data checksum mismatch. File may be corrupted or tampered with.");
+                    System.err.println("Stored: " + storedChecksum + ", Calculated: " + calculatedChecksum);
+                    // Optionally, you could rename or delete the corrupted file here:
+                    // file.renameTo(new File(USER_FILE + ".corrupted-" + System.currentTimeMillis()));
+                    System.out.println("Loading default empty user data due to checksum mismatch.");
+                    return new HashMap<>(); // Checksum mismatch
+                }
+            } else {
+                // This could be an old file format or a severely corrupted file
+                System.err.println("User data file is in an unexpected format or severely corrupted.");
+                // Optionally, rename or delete:
+                // file.renameTo(new File(USER_FILE + ".unknownformat-" + System.currentTimeMillis()));
+                System.out.println("Loading default empty user data due to unexpected format.");
+                return new HashMap<>();
+            }
+        } catch (IOException | ClassNotFoundException | ClassCastException e) {
+            System.err.println("Error loading or validating user data: " + e.getMessage());
             e.printStackTrace();
-            return new HashMap<>();
+            // Optionally, rename or delete the corrupted file here:
+            // file.renameTo(new File(USER_FILE + ".corrupted-exception-" + System.currentTimeMillis()));
+            System.out.println("Loading default empty user data due to exception during load.");
+            return new HashMap<>(); // Error during deserialization or casting
         }
     }
     //自动保存方法
