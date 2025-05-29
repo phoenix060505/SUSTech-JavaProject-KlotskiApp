@@ -3,6 +3,7 @@ package game;
 import javafx.scene.media.Media;
 import javafx.scene.media.MediaPlayer;
 import java.io.File;
+import java.net.URL;
 
 public class SoundManager {
 
@@ -11,17 +12,18 @@ public class SoundManager {
     public SoundManager() {
         // 构造函数可以留空，或者用于初始化多个声音效果
     }
-    public MediaPlayer loadSound(String soundFilePath) {
+    public MediaPlayer loadSound(String soundResourcePath) { //例如: "/sounds/moveSound.wav"
         try {
-            File file = new File(soundFilePath);
-            if (!file.exists()) {
-                System.err.println("错误：声音文件未找到 - " + soundFilePath);
+            URL resource = getClass().getResource(soundResourcePath);
+            if (resource == null) {
+                // 当资源未找到时，soundResourcePath 将是您传入的相对路径，如 "/sounds/moveSound.wav"
+                System.err.println("错误：声音资源未找到 从类路径 - " + soundResourcePath);
                 return null;
             }
-            Media sound = new Media(file.toURI().toString());
+            Media sound = new Media(resource.toExternalForm());
             return new MediaPlayer(sound);
         } catch (Exception e) {
-            System.err.println("加载声音时出错: " + e.getMessage());
+            System.err.println("加载声音时出错 (" + soundResourcePath + "): " + e.getMessage());
             e.printStackTrace();
             return null;
         }

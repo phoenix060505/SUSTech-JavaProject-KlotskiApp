@@ -99,13 +99,17 @@ public class KlotskiApp extends Application {
 
     // --- 加载声音 ---
     SoundManager sm = new SoundManager(); // 创建 SoundManager 实例
-    this.moveSoundPlayer = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\moveSound.wav");
-    this.LoginBGM = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\LoginBGM.wav");
-    SoundManager.setVolume(LoginBGM, 0.4);
-    SoundManager.playSound(LoginBGM);
-    this.GameBGM = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\GameBGM.wav");
-    this.VictoryBGM = sm.loadSound("D:\\code\\KlotskiPuzzle\\src\\resources\\VictoryBGM.wav");
-
+    this.moveSoundPlayer = sm.loadSound("/sounds/moveSound.wav");
+    this.LoginBGM = sm.loadSound("/sounds/LoginBGM.wav");
+    if (LoginBGM != null) {
+      SoundManager.setVolume(LoginBGM, 0.4);
+      SoundManager.playSound(LoginBGM);
+    } else {
+      System.err.println("KlotskiApp: LoginBGM 加载失败!");
+    }
+    this.GameBGM = sm.loadSound("/sounds/GameBGM.wav");
+    this.VictoryBGM = sm.loadSound("/sounds/VictoryBGM.WAV"); // 注意这里的大小写，最好与文件名统一
+// ...
     showLoginScene();
     if (primaryStage.getScene() != null) {
       primaryStage.getScene().getStylesheets().add(getClass().getResource("/css/WarmTheme.css").toExternalForm());
