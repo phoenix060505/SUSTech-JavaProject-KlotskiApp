@@ -10,21 +10,21 @@ public class SoundManager {
     private MediaPlayer moveSoundPlayer;
 
     public SoundManager() {
-        // 构造函数可以留空，或者用于初始化多个声音效果
     }
-    public MediaPlayer loadSound(String soundResourcePath) { //例如: "/sounds/moveSound.wav"
+
+    public MediaPlayer loadSound(String soundUrl) { // 参数soundUrl应该是一个完整的URL字符串
+        if (soundUrl == null || soundUrl.isEmpty()) {
+            System.err.println("错误：提供的声音URL为空或无效。");
+            return null;
+        }
         try {
-            URL resource = getClass().getResource(soundResourcePath);
-            if (resource == null) {
-                // 当资源未找到时，soundResourcePath 将是您传入的相对路径，如 "/sounds/moveSound.wav"
-                System.err.println("错误：声音资源未找到 从类路径 - " + soundResourcePath);
-                return null;
-            }
-            Media sound = new Media(resource.toExternalForm());
+            // Media构造函数可以直接接受一个格式正确的URL字符串
+            Media sound = new Media(soundUrl);
             return new MediaPlayer(sound);
         } catch (Exception e) {
-            System.err.println("加载声音时出错 (" + soundResourcePath + "): " + e.getMessage());
-            e.printStackTrace();
+            // 明确打印出导致问题的URL，有助于调试
+            System.err.println("加载声音媒体时出错 (URL: " + soundUrl + "): " + e.getMessage());
+            // e.printStackTrace(); // 可以暂时注释掉，如果错误信息太冗余
             return null;
         }
     }
