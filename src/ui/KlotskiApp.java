@@ -298,7 +298,6 @@ public class KlotskiApp extends Application {
     // SoundManager.stopSound(LoginBGM); // 示例：暂停
 
     VBox vbox = new VBox(20);
-    // ... (vbox setup from your code) ...
     vbox.setAlignment(Pos.BOTTOM_CENTER);
     vbox.setPadding(new Insets(20));
     vbox.setFillWidth(true);
@@ -307,9 +306,8 @@ public class KlotskiApp extends Application {
               "-fx-background-size: cover;" +
               "-fx-background-position: center;");
     } else {
-      vbox.setStyle("-fx-background-color: #F5EFE6;"); // Fallback
+      vbox.setStyle("-fx-background-color: #F5EFE6;");
     }
-    // ... (introduction label, scrollpane, text, buttons setup) ...
     Label introduction = new Label();
     introduction.setWrapText(true);
     introduction.setMaxWidth(Double.MAX_VALUE);
@@ -334,7 +332,7 @@ public class KlotskiApp extends Application {
                     Drenched in stunning classical Chinese art and haunting melodies, the game transforms each puzzle into a chapter of history. \
                 Will your strategy rival the brilliance of ancient tacticians? Sharpen your mind, honor the legends, and escape the past—one slide at a time.""";
 
-    Button labelEffectButton = new Button("Can you master the puzzle… and rewrite history?"); // Changed from Label to Button for effect
+    Button labelEffectButton = new Button("Can you master the puzzle… and rewrite history?");
     labelEffectButton.fontProperty().set(Font.font("System", FontPosture.ITALIC, 20));
     labelEffectButton.setWrapText(true);
     labelEffectButton.setStyle("-fx-background-color: #ffffff; -fx-text-fill: #fd0001");
@@ -353,11 +351,6 @@ public class KlotskiApp extends Application {
     backButton.setOnAction(e -> {
       timeline.stop();
       applyFadeTransition(backButton);
-      // 当从“关于游戏”返回登录界面时，确保LoginBGM再次播放
-      if (LoginBGM != null) {
-        LoginBGM.setCycleCount(MediaPlayer.INDEFINITE);
-        SoundManager.playSound(LoginBGM);
-      }
       showLoginScene();
     });
 
@@ -452,9 +445,7 @@ public class KlotskiApp extends Application {
   }
 
   private void showRegisterForm() {
-    // RegisterForm 通常不需要独立的BGM
     GridPane grid = new GridPane();
-    // ... (grid setup) ...
     grid.setAlignment(Pos.CENTER);
     grid.setHgap(20);
     grid.setVgap(20);
@@ -466,8 +457,6 @@ public class KlotskiApp extends Application {
     } else {
       grid.setStyle("-fx-background-color: #f0f0f0;");
     }
-
-    // ... (WaveTextField, WavePasswordField, buttons setup) ...
     Text title = new Text("Register");
     title.setFont(Font.font("Arial", FontWeight.BOLD, 20));
     grid.add(title, 0, 0, 2, 1);
@@ -493,7 +482,6 @@ public class KlotskiApp extends Application {
       String username = usernameField.getText();
       String password = passwordField.getText();
       String confirm = confirmField.getText();
-      // ... (validation) ...
       if (username.isEmpty() || password.isEmpty()) {
         showAlert("Registration Error", "Username and password cannot be empty.");
         return;
@@ -536,7 +524,6 @@ public class KlotskiApp extends Application {
 
 
     VBox menuBox = new VBox(15);
-    // ... (menuBox setup) ...
     menuBox.setAlignment(Pos.CENTER);
     menuBox.setPadding(new Insets(20));
     if (LoginBackground != null) {
@@ -546,8 +533,6 @@ public class KlotskiApp extends Application {
     } else {
       menuBox.setStyle("-fx-background-color: #f0f0f0;");
     }
-
-    // ... (title, welcomeText, buttons, combobox setup) ...
     Text titleText = new Text("Klotski Puzzle"); // Renamed
     titleText.setFont(Font.font("Arial", FontWeight.BOLD, 24));
 
@@ -586,7 +571,6 @@ public class KlotskiApp extends Application {
 
     loadGameButton.setOnAction(e -> {
       if (userManager.isGuest() || userManager.getCurrentUser() == null || gameFileManager == null) {
-        // ... (show alerts) ...
         if (userManager.isGuest()) showAlert("Load Error", "Guests cannot load games. Please log in or register.");
         else if (userManager.getCurrentUser() == null) showAlert("Load Error", "No user logged in.");
         else showAlert("Load Error", "File manager not available.");
@@ -607,7 +591,6 @@ public class KlotskiApp extends Application {
 
     logoutButton.setOnAction(e -> {
       userManager.logout();
-      // LoginBGM 应该继续播放，因为它也是登录界面的BGM
       showLoginScene();
     });
 
@@ -624,10 +607,8 @@ public class KlotskiApp extends Application {
   private void showGameScene() {
     // GameBGM 的播放由调用此方法的地方（如 switchToGameSceneFromMenu 或 startNewGame/loadGame 内部）决定
     // 此方法仅负责UI构建
-
     // 确保在进入游戏场景时，登录/主菜单音乐已停止
     SoundManager.stopSound(LoginBGM);
-
     // 开始播放游戏音乐
     if (this.GameBGM != null) {
       this.GameBGM.setCycleCount(MediaPlayer.INDEFINITE);
@@ -637,7 +618,6 @@ public class KlotskiApp extends Application {
     }
 
     BorderPane root = new BorderPane();
-    // ... (root and other UI elements setup as in your original code) ...
     root.setPadding(new Insets(10));
     if (LoginBackground != null) { // 游戏背景也可以用LoginBackground，或指定新的
       root.setStyle("-fx-background-image: url('" + LoginBackground.getUrl() + "');" +
@@ -696,7 +676,7 @@ public class KlotskiApp extends Application {
     hintButton.setOnAction(e -> getAndApplyHint());
     autoSolveButton.setOnAction(e -> {
       autoSolver.toggleAutoSolve();
-      if (moveCountLabel != null && gameLogic.getBoard() != null) { // 防御性编程
+      if (moveCountLabel != null && gameLogic.getBoard() != null) {
         moveCountLabel.setText("Moves: " + gameLogic.getBoard().getMoveCount());
       }
     });
@@ -735,7 +715,6 @@ public class KlotskiApp extends Application {
             upButton, downButton, leftButton, rightButton,
             undoButton, saveButton, hintButton, autoSolveButton, restartButton, menuNavButton, solverProgress);
     root.setBottom(controlPanel);
-
     // 防止按钮抢占键盘焦点
     for (Button b : List.of(upButton, downButton, leftButton, rightButton,
             undoButton, saveButton, hintButton, autoSolveButton, restartButton, menuNavButton)) {
@@ -744,8 +723,6 @@ public class KlotskiApp extends Application {
 
     Scene scene = new Scene(root, 1100, 600); // 根据内容调整大小
     applyStylesheetsToScene(scene, "/css/WarmTheme.css");
-    // applyStylesheetsToScene(scene, "/css/wave.css"); // 如果游戏场景也用wave控件
-
     scene.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
       if (gameLogic == null || gameLogic.isGameWon() || (autoSolver !=null && autoSolver.isAutoSolving()) ) return;
       switch (e.getCode()) {
@@ -767,7 +744,6 @@ public class KlotskiApp extends Application {
     root.requestFocus(); // 确保根节点获得焦点以响应键盘事件
     root.setOnMouseClicked(ev -> root.requestFocus()); // 点击棋盘区域也夺回焦点
   }
-
   private void showVictoryScene() {
     stopTimer(); // 停止游戏计时器
     SoundManager.stopSound(GameBGM); // 停止游戏背景音乐
@@ -822,7 +798,6 @@ public class KlotskiApp extends Application {
     primaryStage.setScene(scene);
     primaryStage.centerOnScreen();
   }
-
   // 辅助方法，用于安全地加载样式表
   private void applyStylesheetsToScene(Scene scene, String... cssPaths) {
     if (scene == null) return;
@@ -840,13 +815,6 @@ public class KlotskiApp extends Application {
     }
   }
 
-
-  // ... [updateBoard, updateSelectedBlockHighlight, moveSelected, undo, startNewGame, loadGame, saveGame, getAndApplyHint, stop, startTimer, stopTimer, formatTime, showAlert, saveGameOnAutoSolveWin, main 方法保持您之前的修改或根据需要调整] ...
-  // 确保 updateBoard, startNewGame, loadGame 等方法中的图片和声音逻辑与这里的修改一致。
-  // 例如, updateBoard 应该使用 this.CaoCao, this.Guanyu 等预加载的图片。
-  // moveSelected 中的 SoundManager.playSound(this.moveSoundPlayer) 是正确的。
-
-  // KlotskiApp.java
   private void updateBoard() {
     if (boardGrid == null) {
       System.err.println("错误: boardGrid 在 updateBoard() 中为 null");
@@ -974,12 +942,6 @@ public class KlotskiApp extends Application {
 
     if (gameLogic.moveBlock(selectedBlock, direction)) { // moveBlock 现在应该返回 boolean
       if (this.moveSoundPlayer != null) SoundManager.playSound(this.moveSoundPlayer);
-
-      // 动画逻辑 (简化版，直接更新)
-      // 实际项目中，您可能希望对 StackPane 进行动画
-      // 为了简洁，这里先直接调用 updateBoard()
-      // 如果需要动画，需要找到对应的 StackPane 并对其应用 TranslateTransition
-
       StackPane blockContainerToAnimate = null;
       for(Node n : boardGrid.getChildren()){
         if(n instanceof StackPane){
@@ -995,8 +957,6 @@ public class KlotskiApp extends Application {
       }
 
       if (blockContainerToAnimate != null) {
-        // 计算棋盘单元格的实际像素尺寸（包括可能的间隙）
-        // 假设棋盘格子固定大小且紧密排列，或者boardGrid有固定单元格大小
         double cellVisualWidth = boardGrid.getWidth() / gameLogic.getBoard().getCols();
         double cellVisualHeight = boardGrid.getHeight() / gameLogic.getBoard().getRows();
         if (boardGrid.getPrefWidth() > 0 && gameLogic.getBoard().getCols() > 0) {
@@ -1246,9 +1206,6 @@ public class KlotskiApp extends Application {
     SoundManager.stopSound(GameBGM);
     SoundManager.stopSound(VictoryBGM);
     if (moveSoundPlayer != null) SoundManager.stopSound(moveSoundPlayer); // moveSoundPlayer不是循环的，但以防万一
-
-    // JavaFX 平台可能会在所有窗口关闭后自动退出，但显式调用有时用于清理
-    // Platform.exit(); // 通常不需要，除非有特殊需求
   }
 
   private void startTimer() {
@@ -1288,7 +1245,6 @@ public class KlotskiApp extends Application {
   }
 
   private void showAlert(String title, String message) {
-    // 确保在JavaFX应用线程上显示对话框
     if (Platform.isFxApplicationThread()) {
       Alert alert = new Alert(Alert.AlertType.INFORMATION);
       alert.setTitle(title);
