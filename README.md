@@ -127,5 +127,3 @@ SUSTech-JavaProject-KlotskiApp/
 * 皮肤或主题切换功能。
 
 ---
-
-希望这份 README 对您有所帮助！
