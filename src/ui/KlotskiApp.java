@@ -1165,7 +1165,7 @@ public class KlotskiApp extends Application {
 
       Board nextBoardState = solverTask.getValue();
       if (nextBoardState != null) {
-        gameLogic.setBoard(nextBoardState); // GameLogic应该负责更新其内部棋盘和历史
+        gameLogic.applyHintState(nextBoardState); // GameLogic应该负责更新其内部棋盘和历史
         // 并确保步数已在nextBoardState中更新
         updateBoard(); // 更新UI
 

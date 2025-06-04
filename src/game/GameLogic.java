@@ -183,6 +183,12 @@ public class GameLogic {
         return null;
     }
 
+    public void applyHintState(Board hintBoard) {
+        if (hintBoard == null) return;
+        this.board = hintBoard.copy(); // 使用提示棋盘的副本更新当前棋盘
+        this.isGameWon = checkWinConditionInternal(); // 检查胜利条件
+        saveCurrentState(); // 调用现有的方法将当前棋盘状态（即hintBoard的副本）保存到历史记录
+    }
     public void restartGame(int currentLevel) {
         if (board != null) {
             board.resetMoveCount();
