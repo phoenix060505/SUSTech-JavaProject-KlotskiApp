@@ -831,7 +831,7 @@ public class KlotskiApp extends Application {
     // 绘制棋盘格子背景
     for (int row = 0; row < currentBoard.getRows(); row++) {
       for (int col = 0; col < currentBoard.getCols(); col++) {
-        Rectangle cell = new Rectangle(70, 70); // 假设格子大小
+        Rectangle cell = new Rectangle(80, 80); // 假设格子大小
         cell.setFill(Color.LIGHTGRAY); // 格子背景色
         // cell.setStroke(Color.DIMGRAY); // 可选的格子边框
         boardGrid.add(cell, col, row);
